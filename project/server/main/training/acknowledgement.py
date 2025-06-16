@@ -41,7 +41,7 @@ def is_acknowledgement(p):
     txt = p['text']
     if p.get('type') in ['acknowledgement', 'funding', 'coi']:
         return True
-    if d.get('type') is None:
+    if p.get('type') is None:
         if len(txt) > 2500:
             return False
     for f in ['acknowled', 'remerciem', 'agradeci']:

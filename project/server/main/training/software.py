@@ -16,7 +16,7 @@ def is_software(p):
     if 'code' in txt.lower() and p.get('type') in ['availability']:
         score += 2
         evidences.append('availability')
-    if (d.get('software') is True):
+    if (p.get('software') is True):
         for f in ['code ', 'software', 'script ', 'scripts ', 'package ', 'sas ',
                  'logiciel', 'spss', 'program ', 'linux',
                  'matlab', 'python', 'javascript', 'module', 'gurobi',
