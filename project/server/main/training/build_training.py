@@ -7,7 +7,7 @@ import random
 import pandas as pd
 from project.server.main.logger import get_logger
 from project.server.main.utils import download_file, clean_dir
-from project.server.main.s3 import client_s3
+from project.server.main.s3 import client_s3, upload_s3
 from project.server.main.training.dataset import is_dataset
 from project.server.main.training.software import is_software
 from project.server.main.training.acknowledgement import is_acknowledgement
@@ -16,6 +16,15 @@ logger = get_logger(__name__)
 
 ALL_FIELDS = ['is_dataset', 'is_software', 'is_acknowledgement', 'is_clinicaltrial'] 
 mentions_map = None
+
+FASTTEXT_INSTALLED = False
+
+def install_fasttext():
+    global FASTTEXT_INSTALLED
+    if FASTTEXT_INSTALLED:
+        return
+    os.system('sh /src/install_fasttext.sh')
+    FASTTEXT_INSTALLED = True
 
 def infer_type(txt):
     p_type = None
@@ -90,6 +99,21 @@ def aggregate_training_parts(fields = ALL_FIELDS):
             for f in os.listdir(f'/data/training/{field}/parts/{t}'):
                 cmd = f'cat /data/training/{field}/parts/{t}/{f} >> /data/training/{field}/{t}_global_{field}.txt'
                 os.system(cmd)
+
+def fasttext_calibration(fields = ALL_FIELDS):
+    install_fasttext()
+    os.system(f'mkdir -p /data/models')
+    size = "1M"
+    for field in fields:
+        os.system(f'mkdir -p /data/models/{field}')
+        cmd_train = f"/src/fastText/fasttext supervised -input /data/training/{field}/training_global_{field}.txt -output /data/models/{field}/model_{field}_{size} -autotune-validation /data/training/{field}/validation_global_{field}.txt -autotune-duration 1200 -autotune-modelsize {size}"
+        logger.debug(cmd_train)
+        os.system(cmd_train)
+        cmd_test = f"/src/fastText/fasttext test /data/models/{field}/model_{field}_{size}.ftz /data/training/{field}/test_global_{field}.txt -1 0.5"
+        logger.debug(cmd_test)
+        os.system(cmd_test)
+        upload_s3('skolar', f'/data/models/{field}/model_{field}_{size}.ftz', f'models/{field}/model_{field}_{size}.ftz', True)
+        upload_s3('skolar', f'/data/models/{field}/model_{field}_{size}.vec', f'models/{field}/model_{field}_{size}.vec', True)
 
 def get_mentions():
     logger.debug('reading mentions')

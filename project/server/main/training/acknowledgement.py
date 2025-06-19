@@ -13,6 +13,7 @@ ack_evidence_score = {
     'funding was provided': 2,
     'funding provided': 1,
     'funded by': 1,
+    'under grant': 2,
     'research grant': 1,
     'financement': 0.5,
     'financiación': 1,
