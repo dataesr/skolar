@@ -26,7 +26,27 @@ data_evidence_score = {
     "zenodo": 2,
     "pangaea": 2,
     "f1000research": 2,
-    "6073/pasta": 2
+    "6073/pasta": 2,
+    "10.15468": 2,
+    "10.5066": 2,
+    "10.3886": 2,
+    "10.11583": 2,
+    "10.5061": 2,
+    "10.5281": 2,
+    "10.5256": 2,
+    "10.1594": 2,
+    "10.7937": 2,
+    "10.6073": 2,
+    "10.17882": 2,
+    "10.5067": 2,
+    "10.18150": 2,
+    "10.6096": 2,
+    "10.6075": 2,
+    "10.17632": 2,
+    "10.17863": 2,
+    "10.22033": 2,
+    "10.24381": 2,
+    "10.23642": 2
 }
 
 def has_gse(text):
@@ -36,7 +56,8 @@ def has_gse(text):
     return False
 
 def has_arrayexpress(text):
-    for f in ['-MEXP', '-MTAB', '-GEOD', 'CHEMBL', 'EMPIAR', "PRJNA", "EPI_ISL", "SAMN0", "SAMN1"]:
+    for f in ['-MEXP', '-MTAB', '-GEOD', 'CHEMBL', 'EMPIAR', "PRJNA", "EPI_ISL", "SAMN0", "SAMN1", "CVCL_", "E-PROT",
+            "ENSMMUT", "ENSOARG", "ENSBTAG", "IPR0", "PXD0", "HPA0", "PF0", "K02"]:
         if f in text:
             return True
     return False
