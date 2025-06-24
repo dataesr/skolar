@@ -14,7 +14,7 @@ def get_instruction_from_hub(repo_id: str) -> str:
 
 
 instruction = get_instruction_from_hub("dataesr/openchat-3.6-8b-acknowledgments")  # TODO: model from env ?
-
+INFERENCE_URL = "nanani/predict"  # TODO
 
 def chatml_messages(texts: list[str]) -> list:
     # Format texts to chatml
@@ -22,13 +22,12 @@ def chatml_messages(texts: list[str]) -> list:
     return messages
 
 
-def predict(url: str, texts: list[str]):
+def predict(texts: list[str]):
     """
     Request on inference app to generate prediction
 
     Args:
-        url (str): url of the inference app
-        messages (list): list of messages
+        texts (list[str]): list of text inputs
 
     Returns:
         predictions (list[str]): list of predictions
@@ -38,7 +37,7 @@ def predict(url: str, texts: list[str]):
 
     # Request model api
     body = {"messages": messages, "use_chatml": True}
-    response = requests.post(f"{url}/predict", data=body)
+    response = requests.post(INFERENCE_URL, data=body)
     response.raise_for_status()
     json = response.json()
 
