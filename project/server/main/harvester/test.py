@@ -42,9 +42,9 @@ def process_entry(elt):
         publisher = elt['publisher']
     urls_to_test = []
     if doi:
-        if wiley_client and publisher == 'Wiley':
+        if wiley_client and 'wiley' in publisher.lower():
             result, _ = publisher_api_download(doi, filename, wiley_client)
-        if elsevier_client and publisher == 'Elsevier':
+        if elsevier_client and 'elsevier' in publisher.lower():
             result, _ = publisher_api_download(doi, filename, elsevier_client)
     if result == SUCCESS_DOWNLOAD:
         return
@@ -78,4 +78,4 @@ def download_doi(doi, do_grobid = True):
     elt_id = elt['id']
     pdf_file = get_filename(elt_id, 'pdf')
     if do_grobid and os.path.isfile(pdf_file):
-        run_grobid(pdf_file, get_filename(elt_id, 'grobid'))
+        return run_grobid(pdf_file, get_filename(elt_id, 'grobid'))

@@ -3,11 +3,33 @@ import re
 import os
 import shutil
 import datetime
+import fasttext
 import requests
+import base64
+from huggingface_hub import hf_hub_download
 from project.server.main.logger import get_logger
+
 logger = get_logger(__name__)
 
-import base64
+def get_instruction_from_hub(repo_id: str) -> str:
+    # Download file
+    file_path = hf_hub_download(repo_id, filename="instruction.txt", repo_type="model")
+
+    # Read file
+    with open(file_path, "r", encoding="utf-8") as file:
+        instruction = file.read()
+
+    return instruction
+
+def get_models(PARAGRAPH_TYPE):
+    model_path = f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz'
+    if not os.path.isfile(model_path):
+        download_file(f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz', f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz')
+        download_file(f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.vec', f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.vec')
+    fasttext_model = fasttext.load_model(model_path)
+    instruction = get_instruction_from_hub(os.getenv(f"{PARAGRAPH_TYPE.upper()}_MODEL_NAME"))
+    inference = os.getenv(f"{PARAGRAPH_TYPE.upper()}_PREDICT_URL")
+    return {'fasttext_model': fasttext_model, 'instruction': instruction, 'inference_url': inference_url}
 
 def string_to_id(s):
     # Encoder la chaîne en bytes, puis en base64
