@@ -6,6 +6,7 @@ import datetime
 import fasttext
 import requests
 import base64
+import time
 from huggingface_hub import hf_hub_download
 from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_stop
 from project.server.main.logger import get_logger
@@ -27,13 +28,16 @@ def get_model_status(PARAGRAPH_TYPE):
     return INFERENCE_APP_DATA['status']['state']
 
 def make_sure_model_started(PARAGRAPH_TYPE):
+    logger.debug(f'make sure app {PARAGRAPH_TYPE} is running')
     if get_model_status(PARAGRAPH_TYPE) == 'RUNNING':
         return
     INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
     INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
     ovhai_app_start(INFERENCE_APP_ID)
+    time.sleep(60*5)
 
 def make_sure_model_stopped(PARAGRAPH_TYPE):
+    logger.debug(f'make sure app {PARAGRAPH_TYPE} is stopped')
     if get_model_status(PARAGRAPH_TYPE) != 'STOPPED':
         return
     INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))

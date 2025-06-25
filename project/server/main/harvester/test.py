@@ -72,8 +72,8 @@ def process_entry(elt):
         logger.debug('---')
     logger.debug(f'download failed for {elt_id}')
 
-def download_doi(doi, do_grobid = True):
-    elt = requests.get(f'https://api.unpaywall.org/v2/{doi}?email=unpaywall_01@example.com').json()
+def download_doi(elt, do_grobid = True):
+    #elt = requests.get(f'https://api.unpaywall.org/v2/{doi}?email=unpaywall_01@example.com').json()
     process_entry(elt)
     elt_id = elt['id']
     pdf_file = get_filename(elt_id, 'pdf')

@@ -25,6 +25,7 @@ def infere_is_acknowledgement(paragraph, fasttext_model):
 def detect_acknowledgement(paragraphs):
     global models
     make_sure_model_started(PARAGRAPH_TYPE)
+    logger.debug('start predictions')
     filtered_paragraphs = []
     for paragraph in paragraphs:
         if infere_is_acknowledgement(paragraph, models['fasttext_model']):
