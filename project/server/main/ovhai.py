@@ -30,12 +30,12 @@ def ovhai_app_get_data(app_id: str) -> object:
     # get app json data
     cmd = f"ovhai app get {app_id} -o json"
     result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
-    logger.debug(f"result: {result}")
+    #logger.debug(f"result: {result}")
     result.check_returncode()
 
     # parse results
     data = json.loads(result.stdout)
-    logger.debug(f"data: {data}")
+    #logger.debug(f"data: {data}")
     return data
 
 

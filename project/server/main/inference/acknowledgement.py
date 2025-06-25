@@ -4,7 +4,7 @@ import os
 import fasttext
 from project.server.main.paragraphs.acknowledgement import is_acknowledgement
 from project.server.main.inference.predict import predict
-from project.server.main.utils import download_file, clean_dir, get_models
+from project.server.main.utils import download_file, clean_dir, get_models, make_sure_model_started
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
@@ -24,6 +24,7 @@ def infere_is_acknowledgement(paragraph, fasttext_model):
 
 def detect_acknowledgement(paragraphs):
     global models
+    make_sure_model_started(PARAGRAPH_TYPE)
     filtered_paragraphs = []
     for paragraph in paragraphs:
         if infere_is_acknowledgement(paragraph, models['fasttext_model']):
@@ -33,3 +34,4 @@ def detect_acknowledgement(paragraphs):
     for ix, p in enumerate(filtered_paragraphs):
         p['llm_result'] = llm_results[ix]
     return filtered_paragraphs
+

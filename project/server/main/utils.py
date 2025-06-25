@@ -7,7 +7,7 @@ import fasttext
 import requests
 import base64
 from huggingface_hub import hf_hub_download
-from project.server.main.ovhai import ovhai_app_get_data
+from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_stop
 from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,6 +22,16 @@ def get_instruction_from_hub(repo_id: str) -> str:
 
     return instruction
 
+def get_model_status(PARAGRAPH_TYPE):
+    INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
+    return INFERENCE_APP_DATA['status']['state']
+
+def make_sure_model_started(PARAGRAPH_TYPE):
+    if get_model_status(PARAGRAPH_TYPE) == 'RUNNING':
+        return
+    INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
+    INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
+    ovhai_app_start(INFERENCE_APP_ID)
 
 def get_models(PARAGRAPH_TYPE):
     model_path = f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz'
