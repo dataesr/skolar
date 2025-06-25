@@ -38,7 +38,7 @@ def make_sure_model_started(PARAGRAPH_TYPE):
 
 def make_sure_model_stopped(PARAGRAPH_TYPE):
     logger.debug(f'make sure app {PARAGRAPH_TYPE} is stopped')
-    if get_model_status(PARAGRAPH_TYPE) != 'STOPPED':
+    if get_model_status(PARAGRAPH_TYPE) == 'STOPPED':
         return
     INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
     INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
