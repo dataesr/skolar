@@ -43,6 +43,9 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     ./aws/install && \
     rm -rf awscliv2.zip aws/
 
+# OVHAI CLI
+RUN curl https://cli.gra.ai.cloud.ovh.net/install.sh | bash
+
 WORKDIR /src
 
 ENV LC_ALL=en_US.UTF-8

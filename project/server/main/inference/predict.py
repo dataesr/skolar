@@ -1,6 +1,7 @@
+import os
 import requests
 
-def chatml_messages(texts, instruction) -> list:
+def chatml_messages(texts: list, instruction) -> list:
     # Format texts to chatml
     messages = [[{"role": "system", "content": instruction}, {"role": "user", "content": text}] for text in texts]
     return messages
@@ -17,7 +18,7 @@ def predict(texts: list, inference_url, instruction):
         predictions (list[str]): list of predictions
     """
     # Format to chatml with instruction from model
-    messages = chatml_messages(texts, instruction)
+    messages = chatml_messages(texts, instruction, inference_url)
 
     # Request model api
     body = {"messages": messages, "use_chatml": True}
@@ -26,3 +27,4 @@ def predict(texts: list, inference_url, instruction):
     json = response.json()
 
     return json.get("prediction")
+

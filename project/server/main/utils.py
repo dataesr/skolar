@@ -7,6 +7,7 @@ import fasttext
 import requests
 import base64
 from huggingface_hub import hf_hub_download
+from project.server.main.ovhai import ovhai_app_get_data
 from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
@@ -21,15 +22,18 @@ def get_instruction_from_hub(repo_id: str) -> str:
 
     return instruction
 
+
 def get_models(PARAGRAPH_TYPE):
     model_path = f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz'
     if not os.path.isfile(model_path):
         download_file(f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz', f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz')
         download_file(f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.vec', f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.vec')
     fasttext_model = fasttext.load_model(model_path)
-    instruction = get_instruction_from_hub(os.getenv(f"{PARAGRAPH_TYPE.upper()}_MODEL_NAME"))
-    inference = os.getenv(f"{PARAGRAPH_TYPE.upper()}_PREDICT_URL")
-    return {'fasttext_model': fasttext_model, 'instruction': instruction, 'inference_url': inference_url}
+    INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
+    INFERENCE_APP_URL = f"{INFERENCE_APP_DATA.get("status", {}).get("url")}/predict"
+    INFERENCE_APP_MODEL = next((env.get("value") for env in INFERENCE_APP_DATA.get("spec", {}).get("envVars", []) if env.get("name") == "MODEL_NAME"), None)
+    instruction = get_instruction_from_hub(INFERENCE_APP_MODEL)
+    return {'fasttext_model': fasttext_model, 'instruction': instruction, 'inference_url': INFERENCE_APP_URL}
 
 def string_to_id(s):
     # Encoder la chaîne en bytes, puis en base64
