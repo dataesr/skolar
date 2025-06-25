@@ -1,6 +1,7 @@
 import os
 import requests
 
+
 def chatml_messages(texts: list, instruction) -> list:
     # Format texts to chatml
     messages = [[{"role": "system", "content": instruction}, {"role": "user", "content": text}] for text in texts]
@@ -22,13 +23,8 @@ def predict(texts: list, inference_url, instruction):
 
     # Request model api
     body = {"messages": messages, "use_chatml": True}
-    response = requests.post(inference_url, data=body)
-    if response.status_code != 200:
-        logger.debug(inference_url)
-        logger.debug(body)
-        logger.debug(response.text)
+    response = requests.post(inference_url, json=body)
     response.raise_for_status()
     json = response.json()
 
     return json.get("prediction")
-
