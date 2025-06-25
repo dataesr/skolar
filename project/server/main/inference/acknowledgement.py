@@ -16,7 +16,7 @@ def infere_is_acknowledgement(paragraph, fasttext_model):
     if is_acknowledgement(paragraph):
         return True
     txt = paragraph['text']
-    prediction = fasttextmodel.predict(txt)
+    prediction = fasttext_model.predict(txt)
     proba = prediction[1][0]
     if prediction[0][0] == f'label__is_{PARAGRAPH_TYPE}' and proba > 0.5:
         return True
@@ -33,4 +33,3 @@ def detect_acknowledgement(paragraphs):
     for ix, p in enumerate(filtered_paragraphs):
         p['llm_result'] = llm_results[ix]
     return filtered_paragraphs
-
