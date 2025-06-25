@@ -44,7 +44,13 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     rm -rf awscliv2.zip aws/
 
 # OVHAI CLI
-RUN curl https://cli.gra.ai.cloud.ovh.net/install.sh | bash
+RUN curl https://cli.gra.ai.cloud.ovh.net/ovhai-linux.zip -o ovhai-linux.zip && \
+    unzip ovhai-linux.zip && \
+    mkdir -p /bin && \
+    mv ovhai /bin/ovhai && \
+    export PATH=$PATH:/bin/ && \
+    rm -rf ovhai-linux.zip ovhai
+RUN mkdir -p ~/.config/ovhai && curl -o ~/.config/ovhai/config.json https://cli.gra.ai.cloud.ovh.net/config.json
 
 WORKDIR /src
 

@@ -11,12 +11,8 @@ def ovhai_initialize():
     Log in to ovhai cli
     """
     # ovhai login
-    result = subprocess.run(
-        ["ovhai", "login", "--username", os.getenv("OVHAI_USERNAME"), "--password-from-env", "OVHAI_PASSWORD"],
-        shell=True,
-        text=True,
-    )
-    logger.debug(f"result: {result}")
+    cmd = f'ovhai login --username {os.getenv("OVHAI_USERNAME")} --password-from-env OVHAI_PASSWORD'
+    result = subprocess.run(cmd, shell=True, text=True)
     result.check_returncode()
     logger.info("✅ OVHAI CLI initialized!")
 
@@ -32,7 +28,8 @@ def ovhai_app_get_data(app_id: str) -> object:
     - object: app data
     """
     # get app json data
-    result = subprocess.run(["ovhai", "app", "get", app_id, "-o", "json"], shell=True, capture_output=True)
+    cmd = f"ovhai app get {app_id} -o json"
+    result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
     logger.debug(f"result: {result}")
     result.check_returncode()
 
@@ -50,7 +47,8 @@ def ovhai_app_start(app_id: str):
     - app_id (str): app id
     """
     # start app
-    result = subprocess.run(["ovhai", "app", "start", app_id], shell=True, text=True)
+    cmd = f"ovhai app start {app_id}"
+    result = subprocess.run(cmd, shell=True, text=True)
     result.check_returncode()
 
 
@@ -62,5 +60,6 @@ def ovhai_app_stop(app_id: str):
     - app_id (str): app id
     """
     # stop app
-    result = subprocess.run(["ovhai", "app", "stop", app_id], shell=True, text=True)
+    cmd = f"ovhai app stop {app_id}"
+    result = subprocess.run(cmd, shell=True, text=True)
     result.check_returncode()
