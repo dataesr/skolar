@@ -1,6 +1,7 @@
+import os
 import requests
 from huggingface_hub import hf_hub_download
-
+from project.server.main.ovhai import ovhai_app_get_data
 
 def get_instruction_from_hub(repo_id: str) -> str:
     # Download file
@@ -12,9 +13,10 @@ def get_instruction_from_hub(repo_id: str) -> str:
 
     return instruction
 
-
-instruction = get_instruction_from_hub("dataesr/openchat-3.6-8b-acknowledgments")  # TODO: model from env ?
-INFERENCE_URL = "nanani/predict"  # TODO
+INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv("ACKNOWLEDGEMENT_INFERENCE_APP_ID"))
+INFERENCE_APP_URL = f"{INFERENCE_APP_DATA.get("status", {}).get("url")}/predict"
+INFERENCE_APP_MODEL = next((env.get("value") for env in INFERENCE_APP_DATA.get("spec", {}).get("envVars", []) if env.get("name") == "MODEL_NAME"), None)
+instruction = get_instruction_from_hub(INFERENCE_APP_MODEL)
 
 def chatml_messages(texts: list[str]) -> list:
     # Format texts to chatml
@@ -37,7 +39,7 @@ def predict(texts: list[str]):
 
     # Request model api
     body = {"messages": messages, "use_chatml": True}
-    response = requests.post(INFERENCE_URL, data=body)
+    response = requests.post(INFERENCE_APP_URL, data=body)
     response.raise_for_status()
     json = response.json()
 
