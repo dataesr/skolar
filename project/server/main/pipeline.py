@@ -1,6 +1,7 @@
 from project.server.main.harvester.test import download_doi
 from project.server.main.grobid import parse_grobid
 from project.server.main.inference.acknowledgement import detect_acknowledgement
+from project.server.main.utils import make_sure_model_stopped
 from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
@@ -19,6 +20,8 @@ def run(dois):
     logger.debug(f'{len(paragraphs)} paragraphs extracted')
     detections = detect_acknowledgement(paragraphs)
     logger.debug(f'{len(detections)} paragraphs detected')
+    make_sure_model_stopped('ACKNOWLEDGEMENT')
+
     return detections
 
 

@@ -32,6 +32,6 @@ def detect_acknowledgement(paragraphs):
     llm_results = predict([p['text'] for p in filtered_paragraphs], models['inference_url'], models['instruction'])
     assert(len(llm_results) == len(filtered_paragraphs))
     for ix, p in enumerate(filtered_paragraphs):
-        p['llm_result'] = llm_results[ix]
+        p[f'llm_{PARAGRAPH_TYPE}'] = llm_results[ix]
     return filtered_paragraphs
 

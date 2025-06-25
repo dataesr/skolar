@@ -33,6 +33,13 @@ def make_sure_model_started(PARAGRAPH_TYPE):
     INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
     ovhai_app_start(INFERENCE_APP_ID)
 
+def make_sure_model_stopped(PARAGRAPH_TYPE):
+    if get_model_status(PARAGRAPH_TYPE) != 'STOPPED':
+        return
+    INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
+    INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
+    ovhai_app_stop(INFERENCE_APP_ID)
+
 def get_models(PARAGRAPH_TYPE):
     model_path = f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz'
     if not os.path.isfile(model_path):
