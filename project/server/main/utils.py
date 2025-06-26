@@ -80,16 +80,22 @@ def get_path_from_id(id):
     return f'{s1}/{s2}/{s3}/{s4}'
 
 def get_filename(elt_id, file_type):
-    assert(file_type in ['pdf', 'grobid'])
+    assert(file_type in ['pdf', 'grobid', 'acknowledgement'])
     encoded_id = string_to_id(elt_id)
-    path_prefix = f'/data/{file_type}/' + get_path_from_id(encoded_id) + '/'
+    path_type = file_type
+    if file_type not in ['pdf', 'grobid']:
+        path_type = f'llm/{file_type}'
+    path_prefix = f'/data/{path_type}/' + get_path_from_id(encoded_id) + '/'
     os.system(f'mkdir -p {path_prefix}')
     filename=None
     if file_type == 'pdf':
         filename = path_prefix + encoded_id + '.pdf'
     if file_type == 'grobid':
         filename = path_prefix + encoded_id + '.tei.xml'
+    if file_type in ['acknowledgement']:
+        filename = path_prefix + encoded_id + '.acknowledgement.jsonl'
     assert(isinstance(filename, str))
+    os.system(f'mkdir -p {path_prefix}')
     return filename
 
 

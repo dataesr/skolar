@@ -2,9 +2,10 @@ import pickle
 import re
 import os
 import fasttext
+import pandas as pd
 from project.server.main.paragraphs.acknowledgement import is_acknowledgement
 from project.server.main.inference.predict import predict
-from project.server.main.utils import download_file, clean_dir, get_models, make_sure_model_started
+from project.server.main.utils import download_file, clean_dir, get_models, make_sure_model_started, get_filename
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
@@ -24,6 +25,7 @@ def infere_is_acknowledgement(paragraph, fasttext_model):
 
 def detect_acknowledgement(paragraphs):
     global models
+    publi_id_map = {}
     make_sure_model_started(PARAGRAPH_TYPE)
     logger.debug('start predictions')
     filtered_paragraphs = []
@@ -34,5 +36,12 @@ def detect_acknowledgement(paragraphs):
     assert(len(llm_results) == len(filtered_paragraphs))
     for ix, p in enumerate(filtered_paragraphs):
         p[f'llm_{PARAGRAPH_TYPE}'] = llm_results[ix]
+        publi_id = p['publication_id']
+        if publi_id not in publi_id_map:
+            publi_id_map[publi_id] = []
+        publi_id_map[publi_id].append(p)
+    for publi_id in publi_id_map:
+        filename = get_filename(publi_id, PARAGRAPH_TYPE)
+        pd.DataFrame(publi_id_map[publi_id]).to_json(filename, orient='records', lines=True)
     return filtered_paragraphs
 

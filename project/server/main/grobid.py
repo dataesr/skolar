@@ -29,7 +29,7 @@ def run_grobid(pdf_file, output_file):
     logger.debug(f'{output_file} written.')
     return output_file
 
-def parse_grobid(xml_path):
+def parse_grobid(xml_path, publication_id):
     xml_handler = open(xml_path, 'r')
     soup = BeautifulSoup(xml_handler, 'html.parser')
     xml_handler.close()
@@ -72,6 +72,7 @@ def parse_grobid(xml_path):
    
     for p in paragraphs:
         p['uid'] = uid
+        p['publication_id'] = publication_id
     return paragraphs
 
 def decompose_text(text):
