@@ -1,4 +1,5 @@
-from project.server.main.harvester.test import download_doi
+import pandas as pd
+from project.server.main.harvester.test import download_publication
 from project.server.main.grobid import parse_grobid
 from project.server.main.inference.acknowledgement import detect_acknowledgement
 from project.server.main.utils import make_sure_model_stopped, id_to_string
@@ -7,12 +8,21 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
+def get_elts_from_dois(dois):
+    return get_oa(dois) # get info from unpaywall db
 
-def run(dois):
+def run_from_bso():
+    make_sure_model_started('ACKNOWLEDGEMENT', wait=False)
+    df = pd.read_json('/data/bso-publications-latest.jsonl.gz', lines=True, chunksize=100)
+    for c in df:
+        elts = c.to_dict(orient='records')
+        run(elts)
+        break
+
+def run(elts):
     xml_paths = []
-    elts = get_oa(dois) # get info from unpaywall db
     for elt in elts:
-        xml_path = download_doi(elt) # download + run_grobid
+        xml_path = download_publication(elt) # download + run_grobid
         if xml_path:
             xml_paths.append(xml_path)
     paragraphs = []

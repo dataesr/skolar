@@ -25,10 +25,10 @@ def process_entry(elt):
     result = FAIL_DOWNLOAD
     elt_id = elt.get('id')
     doi = elt.get('doi')
-    if doi:
+    if doi and isinstance(doi, str):
         assert(doi.startswith('10.'))
         doi = doi.lower()
-    if doi and elt_id is None:
+    if doi and not isinstance(elt_id, str):
         elt_id = f'doi{doi}'
         elt['id'] = elt_id
     filename = get_filename(elt_id, 'pdf')
@@ -36,12 +36,12 @@ def process_entry(elt):
         logger.debug(f'already downloaded {filename} for {elt_id}')
         return
     publisher = None
-    if elt.get('publisher_normalized'):
+    if isinstance(elt.get('publisher_normalized'), str):
         publisher = elt['publisher_normalized']
-    elif elt.get('publisher'):
+    elif isinstance(elt.get('publisher'), str):
         publisher = elt['publisher']
     urls_to_test = []
-    if doi:
+    if doi and isinstance(doi, str):
         if wiley_client and 'wiley' in publisher.lower():
             result, _ = publisher_api_download(doi, filename, wiley_client)
         if elsevier_client and 'elsevier' in publisher.lower():
@@ -51,12 +51,15 @@ def process_entry(elt):
     oa_locations = []
     if isinstance(elt.get('oa_locations'), list):
         oa_locations = elt['oa_locations']
-    if 'oa_details' in elt:
+    if 'oa_details' in elt and isinstance(elt['oa_details'], dict):
         oa_dates = list(elt['oa_details'].keys())
         oa_dates.sort()
         last_oa_date = oa_dates[-1]
         if isinstance(elt['oa_details'].get(last_oa_date, {}).get('oa_locations'), list):
             oa_locations = elt['oa_details'][last_oa_date]['oa_locations']
+    if len(oa_locations) == 0:
+        logger.debug(f'no URL for download for {elt_id}')
+        return 
     for oa_loc in oa_locations:
         url = oa_loc.get('url_for_pdf')
         logger.debug(url)
@@ -72,7 +75,7 @@ def process_entry(elt):
         logger.debug('---')
     logger.debug(f'download failed for {elt_id}')
 
-def download_doi(elt, do_grobid = True):
+def download_publication(elt, do_grobid = True):
     #elt = requests.get(f'https://api.unpaywall.org/v2/{doi}?email=unpaywall_01@example.com').json()
     process_entry(elt)
     elt_id = elt['id']
