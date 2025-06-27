@@ -95,15 +95,15 @@ def publisher_api_download(doi: str, filepath: str, client:BaseAPIClient) -> Tup
     return result, harvester_used
 
 
-def standard_download(url: str, filename: str, doi: str) -> Tuple[str, str]:
+def standard_download(url: str, filename: str, p_id: str) -> Tuple[str, str]:
     scraper = cloudscraper.create_scraper(interpreter='nodejs')
     content = _process_request(scraper, url)
     if not content:
-        logger.error(f'The publication with doi = {doi} download failed via standard request. File content is empty')
+        logger.error(f'The publication with id = {p_id} download failed via standard request. File content is empty')
         raise EmptyFileContentException(
-            f'The PDF content returned by _process_request is empty (standard download). doi = {doi}, URL = {url}')
+            f'The PDF content returned by _process_request is empty (standard download). p_id = {p_id}, URL = {url}')
 
-    logger.debug(f'The publication with doi = {doi} was successfully downloaded via standard request')
+    logger.debug(f'The publication with id = {p_id} was successfully downloaded via standard request')
     with open(filename, 'wb') as f_out:
         f_out.write(content)
     result, harvester_used = SUCCESS_DOWNLOAD, STANDARD_HARVESTER

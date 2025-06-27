@@ -62,6 +62,8 @@ def process_entry(elt):
         return 
     for oa_loc in oa_locations:
         url = oa_loc.get('url_for_pdf')
+        if not isinstance(url, str) and isinstance(oa_loc.get('url'), str) and '/document' in oa_loc.get('url'):
+            url = oa_loc['url']
         logger.debug(url)
         if isinstance(url, str):
             result = FAIL_DOWNLOAD

@@ -29,21 +29,35 @@ def get_model_status(PARAGRAPH_TYPE):
 
 def make_sure_model_started(PARAGRAPH_TYPE, wait=True):
     logger.debug(f'make sure app {PARAGRAPH_TYPE} is running')
-    if get_model_status(PARAGRAPH_TYPE) == 'RUNNING':
-        return
     INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
     INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
+    INFERENCE_APP_URL = f"{INFERENCE_APP_DATA.get('status', {}).get('url')}/predict"
+    INFERENCE_APP_MODEL = next((env.get("value") for env in INFERENCE_APP_DATA.get("spec", {}).get("envVars", []) if env.get("name") == "MODEL_NAME"), None)
+    instruction = get_instruction_from_hub(INFERENCE_APP_MODEL)
+    logger.debug(f'current status = {get_model_status(PARAGRAPH_TYPE)}')
+    if get_model_status(PARAGRAPH_TYPE) == 'RUNNING':
+        try:
+            predict(['This is a test'], INFERENCE_APP_URL, instruction)
+        except:
+            logger.debug(f'app {PARAGRAPH_TYPE} {INFERENCE_APP_ID} running but not yet workable, wait another 5 min...')
+            time.sleep(60*5)
+        return
+    if get_model_status(PARAGRAPH_TYPE) == 'INITIALIZING':
+        time.sleep(60*10)
     ovhai_app_start(INFERENCE_APP_ID)
     if wait:
+        logger.debug(f'wait 10 min for the app {PARAGRAPH_TYPE} {INFERENCE_APP_ID} to start')
         time.sleep(60*10)
 
 def make_sure_model_stopped(PARAGRAPH_TYPE):
     logger.debug(f'make sure app {PARAGRAPH_TYPE} is stopped')
+    logger.debug(f'current status = {get_model_status(PARAGRAPH_TYPE)}')
     if get_model_status(PARAGRAPH_TYPE) == 'STOPPED':
         return
     INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
     INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
     ovhai_app_stop(INFERENCE_APP_ID)
+    time.sleep(10)
 
 def get_bso_data():
     url = 'https://storage.gra.cloud.ovh.net/v1/AUTH_32c5d10cb0fe4519b957064a111717e3/bso_dump/bso-publications-latest.jsonl.gz'

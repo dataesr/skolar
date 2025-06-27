@@ -23,7 +23,7 @@ def predict(texts: list, inference_url, instruction):
 
     # Request model api
     body = {"messages": messages, "use_chatml": True}
-    response = requests.post(inference_url, json=body)
+    response = requests.post(inference_url, json=body, timeout=60*10)
     response.raise_for_status()
     json = response.json()
 
