@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 PARAGRAPH_TYPE = 'acknowledgement'
 
-models = get_models(PARAGRAPH_TYPE)
+models = None
 
 def infere_is_acknowledgement(paragraph, fasttext_model):
     if is_acknowledgement(paragraph):
@@ -25,6 +25,8 @@ def infere_is_acknowledgement(paragraph, fasttext_model):
 
 def detect_acknowledgement(paragraphs):
     global models
+    if models is None:
+        models = get_models(PARAGRAPH_TYPE)
     publi_id_map = {}
     make_sure_model_started(PARAGRAPH_TYPE)
     logger.debug('start predictions')

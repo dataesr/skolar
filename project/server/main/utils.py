@@ -9,9 +9,25 @@ import base64
 import time
 from huggingface_hub import hf_hub_download
 from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_stop
+from project.server.main.inference.predict import predict
 from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
+
+def gzip_all_files_in_dir(mydir):
+    n = 0
+    for root, dirs, files in os.walk(mydir):
+        for f in files:
+            os.system(f'cd {root} && gzip {f}')
+            n += 1
+    logger.debug(f'gzipped {n} files in {mydir}')
+
+def cp_folder_local_s3(folder_local, folder_distant=None):
+    if folder_distant is None:
+        folder_distant = folder_local
+    cmd = f'aws s3 cp {folder_local} s3://skolar/{folder_distant}  --recursive'
+    logger.debug(f'cp_folder_local_s3 for {folder_local} to {folder_distant} cmd={cmd}')
+    os.system(cmd)
 
 def get_instruction_from_hub(repo_id: str) -> str:
     # Download file
@@ -99,15 +115,15 @@ def get_path_from_id(id):
     return f'{s1}/{s2}/{s3}/{s4}'
 
 def get_filename(elt_id, file_type):
-    assert(file_type in ['pdf', 'grobid', 'acknowledgement'])
+    #assert(file_type in ['pdf', 'grobid', 'acknowledgement'])
     encoded_id = string_to_id(elt_id)
     path_type = file_type
-    if file_type not in ['pdf', 'grobid']:
+    if file_type in ['acknowledgement', 'software', 'dataset']:
         path_type = f'llm/{file_type}'
     path_prefix = f'/data/{path_type}/' + get_path_from_id(encoded_id) + '/'
     os.system(f'mkdir -p {path_prefix}')
     filename=None
-    if file_type == 'pdf':
+    if file_type.startswith('pdf'):
         filename = path_prefix + encoded_id + '.pdf'
     if file_type == 'grobid':
         filename = path_prefix + encoded_id + '.tei.xml'

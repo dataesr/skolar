@@ -45,11 +45,13 @@ def _download_publication(urls, filename, local_entry, wiley_client, elsevier_cl
                     break
             elif wiley_client and 'wiley' in url:  # Wiley client can be None in case of an initialization problem
                 result, _ = publisher_api_download(doi, filename, wiley_client)
+                sleep(5)
                 harvester_used = WILEY_HARVESTER
                 if result == SUCCESS_DOWNLOAD:
                     break
             elif elsevier_client and 'elsevier' in url:  # Elsevier client can be None in case of an initialization problem
                 result, _ = publisher_api_download(doi, filename, elsevier_client)
+                sleep(5)
                 harvester_used = ELSEVIER_HARVESTER
                 if result == SUCCESS_DOWNLOAD:
                     break
@@ -87,8 +89,14 @@ def arxiv_download(url: str, filepath: str, doi: str) -> Tuple[str, str]:
 def publisher_api_download(doi: str, filepath: str, client:BaseAPIClient) -> Tuple[str, str]:
     try:
         result, harvester_used = client.download_publication(doi, filepath)
-    except FailedRequest:
-        result, harvester_used = FAIL_DOWNLOAD, WILEY_HARVESTER if client.name == "wiley" else ELSEVIER_HARVESTER
+    except:
+        result = FAIL_DOWNLOAD
+        if client.name == "wiley":
+            harvester_used = WILEY_HARVESTER
+        elif client.name == "elsevier":
+            harvester_used = ELSEVIER_HARVESTER
+        else:
+            harvester_used = 'unknown harvester ??'
         logger.error(
             f"An error occurred during downloading the publication using {client.name} client. Standard download will be used."
             " Request exception = ", exc_info=True)

@@ -20,7 +20,7 @@ try:
 except:
     pass
 
-def process_entry(elt):
+def process_entry(elt, worker_idx = 1):
     global wiley_client, elsevier_client
     result = FAIL_DOWNLOAD
     elt_id = elt.get('id')
@@ -31,7 +31,7 @@ def process_entry(elt):
     if doi and not isinstance(elt_id, str):
         elt_id = f'doi{doi}'
         elt['id'] = elt_id
-    filename = get_filename(elt_id, 'pdf')
+    filename = get_filename(elt_id, f'pdf_{worker_idx}')
     if os.path.isfile(filename):
         logger.debug(f'already downloaded {filename} for {elt_id}')
         return
@@ -77,10 +77,10 @@ def process_entry(elt):
         logger.debug('---')
     logger.debug(f'download failed for {elt_id}')
 
-def download_publication(elt, do_grobid = True):
+def process_publication(elt, worker_idx = 1, do_grobid = True):
     #elt = requests.get(f'https://api.unpaywall.org/v2/{doi}?email=unpaywall_01@example.com').json()
-    process_entry(elt)
+    process_entry(elt, worker_idx)
     elt_id = elt['id']
-    pdf_file = get_filename(elt_id, 'pdf')
+    pdf_file = get_filename(elt_id, f'pdf_{worker_idx}')
     if do_grobid and os.path.isfile(pdf_file):
         return run_grobid(pdf_file, get_filename(elt_id, 'grobid'))
