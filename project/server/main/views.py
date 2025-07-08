@@ -7,7 +7,7 @@ from rq import Connection, Queue
 from project.server.main.pipeline import run_from_bso
 from project.server.main.logger import get_logger
 from project.server.main.utils import get_bso_data
-from project.server.main.utils import make_sure_model_stopped, make_sure_model_started
+from project.server.main.utils import inference_app_run, inference_app_stop
 
 default_timeout = 4320000
 
@@ -29,10 +29,10 @@ def split_bso_data():
 
 @main_blueprint.route("/process_bso", methods=["POST"])
 def run_process_bso():
-    #make_sure_model_started('ACKNOWLEDGEMENT')
-    #get_bso_data()
+    # inference_app_run('ACKNOWLEDGEMENT')
+    # get_bso_data()
     logger.debug(f'splitting bso file in chunk of len 800 000 ; expect 5 files outputs')
-    #split_bso_data()
+    # split_bso_data()
     worker_idx = 1
     for f in os.listdir('/data/bso_chunks'):
         if f.startswith('chunk_bso'):

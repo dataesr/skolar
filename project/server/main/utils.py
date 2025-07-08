@@ -9,7 +9,6 @@ import base64
 import time
 from huggingface_hub import hf_hub_download
 from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_stop
-from project.server.main.inference.generate import predict
 from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
@@ -39,41 +38,52 @@ def get_instruction_from_hub(repo_id: str) -> str:
 
     return instruction
 
-def get_model_status(PARAGRAPH_TYPE):
-    INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
+
+def inference_app_get_id(PARAGRAPH_TYPE: str) -> str:
+    app_id = os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID")
+    assert (app_id, str)
+    return app_id
+
+
+def inference_app_get_state(PARAGRAPH_TYPE: str) -> str:
+    INFERENCE_APP_DATA = ovhai_app_get_data(inference_app_get_id(PARAGRAPH_TYPE))
     return INFERENCE_APP_DATA['status']['state']
 
-def make_sure_model_started(PARAGRAPH_TYPE, wait=True):
-    logger.debug(f'make sure app {PARAGRAPH_TYPE} is running')
-    INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
-    INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
-    INFERENCE_APP_URL = f"{INFERENCE_APP_DATA.get('status', {}).get('url')}/predict"
-    INFERENCE_APP_MODEL = next((env.get("value") for env in INFERENCE_APP_DATA.get("spec", {}).get("envVars", []) if env.get("name") == "MODEL_NAME"), None)
-    instruction = get_instruction_from_hub(INFERENCE_APP_MODEL)
-    logger.debug(f'current status = {get_model_status(PARAGRAPH_TYPE)}')
-    if get_model_status(PARAGRAPH_TYPE) == 'RUNNING':
-        try:
-            predict(['This is a test'], INFERENCE_APP_URL, instruction)
-        except:
-            logger.debug(f'app {PARAGRAPH_TYPE} {INFERENCE_APP_ID} running but not yet workable, wait another 5 min...')
-            time.sleep(60*5)
-        return
-    if get_model_status(PARAGRAPH_TYPE) == 'INITIALIZING':
-        time.sleep(60*10)
-    ovhai_app_start(INFERENCE_APP_ID)
-    if wait:
-        logger.debug(f'wait 10 min for the app {PARAGRAPH_TYPE} {INFERENCE_APP_ID} to start')
-        time.sleep(60*10)
 
-def make_sure_model_stopped(PARAGRAPH_TYPE):
+def inference_app_run(PARAGRAPH_TYPE: str, timeout: int = 60 * 15):
+    """make sure inference app is running"""
+    logger.debug(f'make sure app {PARAGRAPH_TYPE} is running')
+    start_time = time.time()
+
+    while True:
+        app_state = inference_app_get_state(PARAGRAPH_TYPE)
+        logger.debug(f"current status = {app_state}")
+        if app_state == "RUNNING":
+            return
+
+        duration = int(time.time() - start_time)
+        if duration > timeout:
+            logger.error(f"app { PARAGRAPH_TYPE} took too long to start, aborting...")
+            raise RuntimeError(f"app { PARAGRAPH_TYPE} took too long to start, aborting...")
+
+        if app_state in ("QUEUED", "INITIALIZING", "SCALING"):
+            logger.debug(f"app {PARAGRAPH_TYPE} waiting to start...")
+            time.sleep(60)
+        if app_state in ("STOPPING", "STOPPED"):
+            logger.debug(f"app {PARAGRAPH_TYPE} not started, restarting...")
+            ovhai_app_start(inference_app_get_id(PARAGRAPH_TYPE))
+            time.sleep(60 * 5)
+
+
+def inference_app_stop(PARAGRAPH_TYPE: str):
+    """make sure inference app is stopped"""
     logger.debug(f'make sure app {PARAGRAPH_TYPE} is stopped')
-    logger.debug(f'current status = {get_model_status(PARAGRAPH_TYPE)}')
-    if get_model_status(PARAGRAPH_TYPE) == 'STOPPED':
+    logger.debug(f"current status = {inference_app_get_state(PARAGRAPH_TYPE)}")
+    if inference_app_get_state(PARAGRAPH_TYPE) in ("STOPPING", "STOPPED"):
         return
-    INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
-    INFERENCE_APP_ID = f"{INFERENCE_APP_DATA.get('id')}"
-    ovhai_app_stop(INFERENCE_APP_ID)
+    ovhai_app_stop(inference_app_get_id(PARAGRAPH_TYPE))
     time.sleep(10)
+
 
 def get_bso_data():
     url = 'https://storage.gra.cloud.ovh.net/v1/AUTH_32c5d10cb0fe4519b957064a111717e3/bso_dump/bso-publications-latest.jsonl.gz'
@@ -85,11 +95,11 @@ def get_models(PARAGRAPH_TYPE):
         download_file(f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz', f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz')
         download_file(f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.vec', f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.vec')
     fasttext_model = fasttext.load_model(model_path)
-    INFERENCE_APP_DATA = ovhai_app_get_data(os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID"))
+    INFERENCE_APP_DATA = ovhai_app_get_data(inference_app_get_id(PARAGRAPH_TYPE))
     INFERENCE_APP_URL = f"{INFERENCE_APP_DATA.get('status', {}).get('url')}/generate"
     INFERENCE_APP_MODEL = next((env.get("value") for env in INFERENCE_APP_DATA.get("spec", {}).get("envVars", []) if env.get("name") == "MODEL_NAME"), None)
     instruction = get_instruction_from_hub(INFERENCE_APP_MODEL)
-    return {'fasttext_model': fasttext_model, 'instruction': instruction, 'inference_url': INFERENCE_APP_URL}
+    return {"fasttext_model": fasttext_model, "inference_instruction": instruction, "inference_url": INFERENCE_APP_URL}
 
 def string_to_id(s):
     # Encoder la chaîne en bytes, puis en base64
