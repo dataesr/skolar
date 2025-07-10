@@ -3,7 +3,15 @@ import os
 from project.server.main.harvester.test import process_publication
 from project.server.main.grobid import parse_grobid
 from project.server.main.inference.acknowledgement import detect_acknowledgement
-from project.server.main.utils import make_sure_model_stopped, make_sure_model_started, id_to_string, cp_folder_local_s3, gzip_all_files_in_dir, get_elt_id, get_filename
+from project.server.main.utils import (
+    inference_app_run,
+    inference_app_stop,
+    id_to_string,
+    cp_folder_local_s3,
+    gzip_all_files_in_dir,
+    get_elt_id,
+    get_filename
+)
 from project.server.main.mongo import get_oa
 from project.server.main.logger import get_logger
 
@@ -52,5 +60,3 @@ def parse_paragraphs(elts, worker_idx):
     detections = detect_acknowledgement(paragraphs)
     logger.debug(f'{len(detections)} paragraphs detected')
     return detections
-
-

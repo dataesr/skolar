@@ -4,8 +4,8 @@ import os
 import fasttext
 import pandas as pd
 from project.server.main.paragraphs.acknowledgement import is_acknowledgement
-from project.server.main.inference.predict import predict
-from project.server.main.utils import download_file, clean_dir, get_models, make_sure_model_started, get_filename
+from project.server.main.inference.generate import generate_pipeline
+from project.server.main.utils import download_file, clean_dir, get_models, inference_app_run, get_filename
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
@@ -28,13 +28,13 @@ def detect_acknowledgement(paragraphs):
     if models is None:
         models = get_models(PARAGRAPH_TYPE)
     publi_id_map = {}
-    make_sure_model_started(PARAGRAPH_TYPE)
+    inference_app_run(PARAGRAPH_TYPE)
     logger.debug('start predictions')
     filtered_paragraphs = []
     for paragraph in paragraphs:
         if infere_is_acknowledgement(paragraph, models['fasttext_model']):
             filtered_paragraphs.append(paragraph)
-    llm_results = predict([p['text'] for p in filtered_paragraphs], models['inference_url'], models['instruction'])
+    llm_results = generate_pipeline([p["text"] for p in filtered_paragraphs], models["inference_url"], models["inference_instruction"])
     assert(len(llm_results) == len(filtered_paragraphs))
     for ix, p in enumerate(filtered_paragraphs):
         p[f'llm_{PARAGRAPH_TYPE}'] = llm_results[ix]
@@ -46,4 +46,3 @@ def detect_acknowledgement(paragraphs):
         filename = get_filename(publi_id, PARAGRAPH_TYPE)
         pd.DataFrame(publi_id_map[publi_id]).to_json(filename, orient='records', lines=True)
     return filtered_paragraphs
-
