@@ -25,7 +25,7 @@ def home():
 
 @main_blueprint.route("/stop", methods=["POST"])
 def run_stop():
-    make_sure_model_stopped('ACKNOWLEDGEMENT')
+    inference_app_stop('ACKNOWLEDGEMENT')
     return jsonify({'res': 'ok'}), 202
 
 @main_blueprint.route("/process_bso", methods=["POST"])
@@ -40,7 +40,7 @@ def run_process_bso():
     chunksize = args.get('chunksize', 100)
     early_stop = args.get('early_stop', True)
     if analyze:
-        make_sure_model_started('ACKNOWLEDGEMENT')
+        inference_app_run('ACKNOWLEDGEMENT')
     for f in os.listdir('/data/bso_chunks'):
         if f.startswith('chunk_bso'):
             assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae'])
