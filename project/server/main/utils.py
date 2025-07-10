@@ -14,6 +14,16 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
+def get_elt_id(elt):
+    elt_id = elt.get('id')
+    doi = elt.get('doi')
+    if doi and isinstance(doi, str):
+        assert(doi.startswith('10.'))
+        doi = doi.lower()
+    if doi and not isinstance(elt_id, str):
+        elt_id = f'doi{doi}'
+    return elt_id
+
 def gzip_all_files_in_dir(mydir):
     n = 0
     for root, dirs, files in os.walk(mydir):
@@ -78,6 +88,12 @@ def make_sure_model_stopped(PARAGRAPH_TYPE):
 def get_bso_data():
     url = 'https://storage.gra.cloud.ovh.net/v1/AUTH_32c5d10cb0fe4519b957064a111717e3/bso_dump/bso-publications-latest.jsonl.gz'
     download_file(url, '/data/bso-publications-latest.jsonl.gz')
+    split_bso_data()
+
+def split_bso_data():
+    logger.debug(f'splitting bso file in chunk of len 800 000 ; expect 5 files outputs')
+    os.system('mkdir -p /data/bso_chunks && cd /data/bso_chunks && rm -rf chunk*')
+    os.system(f'cd /data && zcat bso-publications-latest.jsonl.gz | split -l 800000 - chunk_bso_ && mv chunk_bso* bso_chunks/.')
 
 def get_models(PARAGRAPH_TYPE):
     model_path = f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz'

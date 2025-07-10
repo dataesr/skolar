@@ -23,23 +23,28 @@ main_blueprint = Blueprint(
 def home():
     return render_template("home.html")
 
-def split_bso_data():
-    os.system('mkdir -p /data/bso_chunks && cd /data/bso_chunks && rm -rf chunk*')
-    os.system(f'cd /data && zcat bso-publications-latest.jsonl.gz | split -l 800000 - chunk_bso_ && mv chunk_bso* bso_chunks/.')
+@main_blueprint.route("/stop", methods=["POST"])
+def run_stop():
+    make_sure_model_stopped('ACKNOWLEDGEMENT')
+    return jsonify({'res': 'ok'}), 202
 
 @main_blueprint.route("/process_bso", methods=["POST"])
 def run_process_bso():
-    #make_sure_model_started('ACKNOWLEDGEMENT')
+    args = request.get_json(force=True)
     #get_bso_data()
-    logger.debug(f'splitting bso file in chunk of len 800 000 ; expect 5 files outputs')
-    #split_bso_data()
     worker_idx = 1
+    download = args.get('download', False)
+    analyze = args.get('analyze', False)
+    chunksize = args.get('chunksize', 100)
+    early_stop = args.get('early_stop', True)
+    if analyze:
+        make_sure_model_started('ACKNOWLEDGEMENT')
     for f in os.listdir('/data/bso_chunks'):
         if f.startswith('chunk_bso'):
             assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae'])
             with Connection(redis.from_url(current_app.config["REDIS_URL"])):
                 q = Queue(name="skolar", default_timeout=default_timeout)
-                task = q.enqueue(run_from_bso, f'/data/bso_chunks/{f}', worker_idx)
+                task = q.enqueue(run_from_bso, f'/data/bso_chunks/{f}', worker_idx, download, analyze, chunksize, early_stop)
                 worker_idx += 1
             response_object = {"status": "success", "data": {"task_id": task.get_id()}}
     return jsonify(response_object), 202
