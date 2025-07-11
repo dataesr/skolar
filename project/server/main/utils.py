@@ -13,6 +13,10 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
+def get_ip():
+    ip = requests.get('https://api.ipify.org').text
+    return ip
+
 def get_elt_id(elt):
     elt_id = elt.get('id')
     doi = elt.get('doi')
@@ -140,7 +144,8 @@ def get_path_from_id(id):
     s4 = id[-8:-6].lower()
     return f'{s1}/{s2}/{s3}/{s4}'
 
-def get_filename(elt_id, file_type):
+def get_filename(elt_id, file_type_input):
+    file_type = file_type_input.lower()
     #assert(file_type in ['pdf', 'grobid', 'acknowledgement'])
     encoded_id = string_to_id(elt_id)
     path_type = file_type

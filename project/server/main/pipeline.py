@@ -52,11 +52,18 @@ def parse_paragraphs(elts, worker_idx):
         if os.path.isfile(xml_path):
             xml_paths.append(xml_path)
     logger.debug(f'{len(xml_paths)} / {len(elts)} files have an XML')
+    nb_already_analyzed = 0
     for xml_path in xml_paths:
         uid = xml_path.split('/')[-1].split('.')[0]
         elt_id = id_to_string(uid)
-        paragraphs += parse_grobid(xml_path, elt_id)
-    logger.debug(f'{len(paragraphs)} paragraphs extracted')
+        PARAGRAPH_TYPE = 'ACKNOWLEDGEMENT'
+        filename_detection = get_filename(elt_id, PARAGRAPH_TYPE)
+        if os.path.isfile(filename_detection):
+            nb_already_analyzed += 1
+        else:
+            paragraphs += parse_grobid(xml_path, elt_id)
+    logger.debug(f'{len(paragraphs)} new paragraphs extracted')
+    logger.debug(f'{nb_already_analyzed} xmls already analyzed for {PARAGRAPH_TYPE}')
     detections = detect_acknowledgement(paragraphs)
-    logger.debug(f'{len(detections)} paragraphs detected')
+    logger.debug(f'{len(detections)} paragraphs analyzed by llm')
     return detections

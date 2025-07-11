@@ -12,6 +12,7 @@ from project.server.main.logger import get_logger
 from project.server.main.harvester.exception import EmptyFileContentException, PublicationDownloadFileException, FailedRequest
 from project.server.main.harvester.file import is_file_not_empty, decompress
 from project.server.main.harvester.base_api_client import BaseAPIClient
+from project.server.main.utils import get_ip
 
 logger = get_logger(__name__)
 
