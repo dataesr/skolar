@@ -1,5 +1,6 @@
 import requests
 import os
+import re
 import hashlib
 import bs4
 from bs4 import BeautifulSoup
@@ -75,23 +76,63 @@ def parse_grobid(xml_path, publication_id):
         p['publication_id'] = publication_id
     return paragraphs
 
-def decompose_text(text):
+#def decompose_text(text):
+#    ans = []
+#    subtexts =  [t.strip() for t in text.split('\n')]
+#    for subt in subtexts:
+#        if len(subt) < MIN_WORD_LENGTH:
+#            continue
+#        sentences = subt.split('.')
+#        current_text = ""
+#        for s in sentences:
+#            s = s.strip()
+#            if s:
+#                ans += chunk_text(s)
+#    return ans
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+def chunk_words(text, max_chunk_size=350):
+    chunked = list(chunks(text.split(), max_chunk_size))
     ans = []
-    subtexts =  [t.strip() for t in text.split('\n')]
-    for subt in subtexts:
-        if len(subt) < MIN_WORD_LENGTH:
-            continue
-        sentences = subt.split('.')
-        current_text = ""
-        for s in sentences:
-            if s.strip():
-                current_text += s.strip()+". "
-            if len(current_text) > 800:
-                ans.append(current_text)
-                current_text = ""
-        if current_text:
-            ans.append(current_text)
+    for c in chunked:
+        ans.append(' '.join(c))
     return ans
+
+def chunk_text(text, max_chunk_size=800):
+    if len(text.split(' '))<10:
+        return []
+    # Utiliser une expression régulière pour diviser le texte en phrases
+    sentences = re.split(r'(?<=[.!?;\n])', text)
+    sentences = [s.replace('\n', ' ').strip() for s in sentences if len(s)>4]
+    chunks = []
+    current_chunk = ""
+    for sentence in sentences:
+        # Vérifie si l'ajout de la phrase dépasse la taille maximale du chunk
+        if len(current_chunk) + len(sentence) + 1 <= max_chunk_size:
+            if current_chunk:
+                current_chunk += " " + sentence
+            else:
+                current_chunk += sentence
+        else:
+            # Ajoute le chunk actuel à la liste des chunks
+            chunks.append(current_chunk)
+            # Commence un nouveau chunk avec la phrase actuelle
+            current_chunk = sentence
+    # Ajoute le dernier chunk s'il n'est pas vide
+    if current_chunk:
+        chunks.append(current_chunk)
+    ans = [c for c in chunks if c]
+    res = []
+    for c in ans:
+        if len(c) < max_chunk_size:
+            res.append(c)
+        else:
+            res += chunk_words(c, int(max_chunk_size/2)-10)
+    return [r.strip() for r in res if len(r)<max_chunk_size]
 
 def fix_text(current_elt):
     links = []
@@ -125,7 +166,12 @@ def add_text(current_text, current_type, paragraphs, known_hash, uid, skip, verb
             type_to_use= 'skip'
         current_paragraph_id = uid + '--' + str(len(paragraphs))
         current_paragraph_hash = hashlib.md5(current_paragraph_id.encode('utf-8')).hexdigest()
-        for subtext in decompose_text(current_text):
+        text_chunked = None
+        try:
+            text_chunked = chunk_text(current_text)
+        except:
+            logger.error(f'error in trying to chunk text for uid {uid} - text = {current_text}')
+        for subtext in text_chunked:
             paragraphs.append({'text': subtext, 'type': type_to_use, 'hash': current_paragraph_hash})
             known_hash.add(current_hash)
         if verbose:

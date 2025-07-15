@@ -38,6 +38,10 @@ def detect_acknowledgement(paragraphs):
                 continue
             filtered_paragraphs.append(paragraph)
             max_paragraph_len = max(max_paragraph_len, len(paragraph['text']))
+            if len(paragraph['text']) > 2500:
+                logger.debug('long paragraph:')
+                logger.debug(paragraph)
+                logger.debug('---')
     logger.debug(f'{len(filtered_paragraphs)} paragraphs kept after first {PARAGRAPH_TYPE} detection step - Max length = {max_paragraph_len}')
     if len(filtered_paragraphs) == 0:
         return filtered_paragraphs

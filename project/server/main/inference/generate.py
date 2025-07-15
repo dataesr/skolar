@@ -19,14 +19,20 @@ def generate_pipeline(texts: list, inference_url: str, instruction: str):
     task_id = generate_submit(prompts, inference_url)
     logger.debug(f'for the {len(texts)} texts, task_id = {task_id}')
     
-    for tx, t in enumerate(texts):
-        logger.debug(t)
-        if tx > 5:
-            break
+    #for tx, t in enumerate(texts):
+    #    logger.debug(t)
+    #    if tx > 5:
+    #        break
 
     # Get generation task completions
     completions = generate_get_completions(task_id, inference_url)  # TODO: add timeout?
-    logger.debug(f'got {len(completion)}')
+    logger.debug(f'got {len(completions)}')
+    
+    #for tx, t in enumerate(completions):
+    #    logger.debug(t)
+    #    if tx > 5:
+    #        break
+    
     return completions
 
 
