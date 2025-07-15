@@ -6,19 +6,20 @@ from project.server.main.harvester.elsevier_client import ElsevierClient
 from project.server.main.harvester.config import config
 from project.server.main.harvester.download_publication_utils import publisher_api_download, standard_download, SUCCESS_DOWNLOAD, safe_instanciation_client, FAIL_DOWNLOAD
 from project.server.main.grobid import run_grobid
-from project.server.main.utils import get_filename, get_elt_id
+from project.server.main.utils import get_filename, get_elt_id, get_ip
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
 wiley_client, elsevier_client = None, None
+current_ip = get_ip()
 try:
     wiley_client = safe_instanciation_client(WileyClient, config['WILEY'])
 except:
-    pass
+    logger.debug(f'instantiating WILEY client with ip {current_ip} FAILED')
 try:
     elsevier_client = safe_instanciation_client(ElsevierClient, config['ELSEVIER'])
 except:
-    pass
+    logger.debug(f'instantiating ELSEVIER client with ip {current_ip} FAILED')
 
 def process_entry(elt, worker_idx = 1):
     global wiley_client, elsevier_client

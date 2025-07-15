@@ -34,9 +34,13 @@ def detect_acknowledgement(paragraphs):
     max_paragraph_len = 0
     for paragraph in paragraphs:
         if infere_is_acknowledgement(paragraph, models['fasttext_model']):
+            if len(paragraph.get('text').split(' ')) < 10:
+                continue
             filtered_paragraphs.append(paragraph)
-            max_paragraph_len = max(max_paragraph_len, len(paragraph))
+            max_paragraph_len = max(max_paragraph_len, len(paragraph['text']))
     logger.debug(f'{len(filtered_paragraphs)} paragraphs kept after first {PARAGRAPH_TYPE} detection step - Max length = {max_paragraph_len}')
+    if len(filtered_paragraphs) == 0:
+        return filtered_paragraphs
     llm_results = generate_pipeline([p["text"] for p in filtered_paragraphs], models["inference_url"], models["inference_instruction"])
     if (len(llm_results) != len(filtered_paragraphs)):
         logger.debug(f'ERROR getting {len(llm_results)} results but had {len(filtered_paragraphs)} inputs paragraphs')

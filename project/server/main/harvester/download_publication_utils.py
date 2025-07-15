@@ -24,9 +24,10 @@ WILEY_HARVESTER = 'wiley'
 ELSEVIER_HARVESTER = 'elsevier'
 
 def safe_instanciation_client(Client: BaseAPIClient, config: dict) -> BaseAPIClient:
+    client=None
     try:
         client = Client(config)
-    except FailedRequest:
+    except:
         current_ip = get_ip()
         client = None
         logger.error(f"Current IP = {current_ip} - Did not manage to initialize the {config['name']} client. The {config['name']} client instance will be set to None"

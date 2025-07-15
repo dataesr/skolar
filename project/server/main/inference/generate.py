@@ -1,8 +1,8 @@
 import requests
 import time
-from logging import getLogger
+from project.server.main.logger import get_logger
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def chatml_prompts(texts: list, instruction) -> list:
@@ -17,10 +17,16 @@ def generate_pipeline(texts: list, inference_url: str, instruction: str):
 
     # Submit generation task
     task_id = generate_submit(prompts, inference_url)
+    logger.debug(f'for the {len(texts)} texts, task_id = {task_id}')
+    
+    for tx, t in enumerate(texts):
+        logger.debug(t)
+        if tx > 5:
+            break
 
     # Get generation task completions
     completions = generate_get_completions(task_id, inference_url)  # TODO: add timeout?
-
+    logger.debug('got {len(completion)}')
     return completions
 
 
