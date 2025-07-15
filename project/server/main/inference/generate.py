@@ -26,7 +26,7 @@ def generate_pipeline(texts: list, inference_url: str, instruction: str):
 
     # Get generation task completions
     completions = generate_get_completions(task_id, inference_url)  # TODO: add timeout?
-    logger.debug('got {len(completion)}')
+    logger.debug(f'got {len(completion)}')
     return completions
 
 
