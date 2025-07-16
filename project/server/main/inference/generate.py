@@ -1,4 +1,5 @@
 import requests
+from retry import retry
 import time
 from project.server.main.logger import get_logger
 
@@ -56,13 +57,18 @@ def generate_submit(prompts: list, inference_url: str) -> str:
     return task_id
 
 
+@retry(delay=5, tries=3)
+def get_safe(url):
+    response = requests.get(url)
+    response.raise_for_status()
+    return response
+
 def generate_get_completions(task_id: str, inference_url: str, timeout: int = None) -> list:
     completions_url = f"{inference_url}/{task_id}"
     start_time = time.time()
 
     while True:
-        response = requests.get(completions_url)
-        response.raise_for_status()
+        response = get_safe(completions_url)
         data = response.json()
         task_time = int(time.time() - start_time)
 

@@ -35,6 +35,11 @@ def gzip_all_files_in_dir(mydir):
             n += 1
     logger.debug(f'gzipped {n} files in {mydir}')
 
+def download_from_s3(distant_file, local_path):
+    cmd = f'aws s3 cp s3://skolar/{distant_file} {local_path}'
+    logger.debug(f'download_from_s3 {cmd}')
+    os.system(cmd)
+
 def cp_folder_local_s3(folder_local, folder_distant=None):
     if folder_distant is None:
         folder_distant = folder_local
