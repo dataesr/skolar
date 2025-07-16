@@ -4,6 +4,7 @@ import re
 import hashlib
 import bs4
 from bs4 import BeautifulSoup
+from project.server.main.utils import chunks
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
@@ -89,11 +90,6 @@ def parse_grobid(xml_path, publication_id):
 #            if s:
 #                ans += chunk_text(s)
 #    return ans
-
-def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
 
 def chunk_words(text, max_chunk_size=350):
     chunked = list(chunks(text.split(), max_chunk_size))

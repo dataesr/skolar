@@ -13,6 +13,11 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 def get_ip():
     ip = requests.get('https://api.ipify.org').text
     return ip
