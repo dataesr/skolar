@@ -10,7 +10,8 @@ from project.server.main.utils import (
     cp_folder_local_s3,
     gzip_all_files_in_dir,
     get_elt_id,
-    get_filename
+    get_filename,
+    get_lang
 )
 from project.server.main.mongo import get_oa
 from project.server.main.logger import get_logger

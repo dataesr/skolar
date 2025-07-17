@@ -4,7 +4,7 @@ import re
 import hashlib
 import bs4
 from bs4 import BeautifulSoup
-from project.server.main.utils import chunks
+from project.server.main.utils import chunks, get_lang
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
@@ -75,6 +75,12 @@ def parse_grobid(xml_path, publication_id):
     for p in paragraphs:
         p['uid'] = uid
         p['publication_id'] = publication_id
+        pred = get_lang(p['text'])
+        p['lang'] = 'unk'
+        if pred['proba'] > 0.9:
+            p['lang'] = pred['lang']
+    LANGS = ['en', 'fr', 'es', 'pt', 'it', 'de']
+    paragraphs_filetered = [p for p in paragraphs if p['lang'] in LANGS]
     return paragraphs
 
 #def decompose_text(text):

@@ -52,10 +52,17 @@ def infer_type(txt):
     return p_type
 
 def build_training_all():
+    # raw from Grobid
     data = client_s3.list_objects_v2(Bucket='skolar', Prefix='training/raw_paragraphs_from_grobid')
     existing_files = [e['Key'].split('/')[-1] for e in data['Contents']]
     for input_filename in existing_files:
         build_training(input_filename)
+    # extra, specific files
+    # extra files have to be name field.blabla.txt
+    extra_data = client_s3.list_objects_v2(Bucket='skolar', Prefix='training/extra_training')
+    existing_extra_files = [e['Key'].split('/')[-1] for e in extra_data['Contents']]
+    for extra_input_filename in existing_extra_files:
+        build_training_extra(extra_input_filename)
     aggregate_training_parts()
 
 
@@ -89,6 +96,32 @@ def build_training(input_filename, fields = ALL_FIELDS):
     for field in fields:
         save_training_validation(field, df_training , part_name)
 
+def build_training_extra(input_filename):
+    field = input_filename.split('.')[0]
+    logger.debug(f'reading extra {input_filename}')
+    data_url = f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/training/extra_training/{input_filename}'
+    local_filename = f'/data/training/extra_training/{input_filename}'
+    os.system(f'mkdir -p /data/training/extra_training')
+    if not os.path.isfile(local_filename):
+        download_file(data_url, local_filename)
+    random.seed(1987)
+    validation_percentage = 0.1
+    test_percentage = 0.1
+    with open(local_filename, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+    random.shuffle(lines)
+    total_lines = len(lines)
+    validation_lines = int(total_lines * validation_percentage)
+    test_lines = int(total_lines * test_percentage)
+    test_set = lines[:test_lines]
+    validation_set = lines[test_lines:test_lines + validation_lines]
+    training_set = lines[test_lines + validation_lines:]
+    with open(f'/data/training/{field}/parts/training/training_{input_filename}', 'w', encoding='utf-8') as file:
+        file.writelines(training_set)
+    with open(f'/data/training/{field}/parts/validation/validation_{input_filename}', 'w', encoding='utf-8') as file:
+        file.writelines(validation_set)
+    with open(f'/data/training/{field}/parts/test/test_{input_filename}', 'w', encoding='utf-8') as file:
+        file.writelines(test_set)
 
 def aggregate_training_parts(fields = ALL_FIELDS):
     for field in fields:
@@ -149,11 +182,9 @@ def tag_mentions(data):
                 d[m['type']] = True
     return data
 
-def save_training_validation(field, df_training, part_name):
+def save_training_validation(field, df_training, part_name, validation_percentage = 0.1, test_percentage = 0.1):
     logger.debug(f'save_training_validation {field} {part_name}')
     random.seed(1987)
-    validation_percentage = 0.1
-    test_percentage = 0.1
     nb_field = len(df_training[df_training[field]])
     field_proportion = nb_field / len(df_training)
     current_training_data, current_validation_data, current_test_data = [], [], []

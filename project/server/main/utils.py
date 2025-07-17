@@ -7,9 +7,12 @@ import fasttext
 import requests
 import base64
 import time
+import fasttext
 from huggingface_hub import hf_hub_download
 from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_stop
 from project.server.main.logger import get_logger
+    
+lid_model = fasttext.load_model('/src/project/server/main/lid.176.ftz')
 
 logger = get_logger(__name__)
 
@@ -17,6 +20,12 @@ def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+def get_lang(text):
+    pred = lid_model.predict(text, 1)
+    lang = pred[0][0].replace('__label__', '')
+    proba = pred[1][0]
+    return {'lang': lang, 'proba': proba}
 
 def get_ip():
     ip = requests.get('https://api.ipify.org').text

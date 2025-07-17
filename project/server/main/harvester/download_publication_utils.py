@@ -47,13 +47,13 @@ def _download_publication(urls, filename, local_entry, wiley_client, elsevier_cl
                     break
             elif wiley_client and 'wiley' in url:  # Wiley client can be None in case of an initialization problem
                 result, _ = publisher_api_download(doi, filename, wiley_client)
-                sleep(5)
+                sleep(10)
                 harvester_used = WILEY_HARVESTER
                 if result == SUCCESS_DOWNLOAD:
                     break
             elif elsevier_client and 'elsevier' in url:  # Elsevier client can be None in case of an initialization problem
                 result, _ = publisher_api_download(doi, filename, elsevier_client)
-                sleep(5)
+                sleep(10)
                 harvester_used = ELSEVIER_HARVESTER
                 if result == SUCCESS_DOWNLOAD:
                     break
