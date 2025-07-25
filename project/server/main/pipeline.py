@@ -54,7 +54,7 @@ def run_from_file(input_file, args, worker_idx):
     analyze = args.get('analyze', False) # LLM
     chunksize = args.get('chunksize', 100)
     early_stop = args.get('early_stop', False)
-    if 'jsonl' in input_file:
+    if ('jsonl' in input_file) or ('chunk_bso' in input_file):
         df = pd.read_json(input_file, lines=True, chunksize=chunksize)
     elif 'csv' in input_file:
         df = pd.read_csv(input_file, chunksize=chunksize)

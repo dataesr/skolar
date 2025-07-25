@@ -4,7 +4,7 @@ import requests
 from project.server.main.harvester.wiley_client import WileyClient
 from project.server.main.harvester.elsevier_client import ElsevierClient
 from project.server.main.harvester.config import config
-from project.server.main.harvester.download_publication_utils import publisher_api_download, standard_download, SUCCESS_DOWNLOAD, safe_instanciation_client, FAIL_DOWNLOAD
+from project.server.main.harvester.download_publication_utils import publisher_api_download, standard_download, SUCCESS_DOWNLOAD, safe_instanciation_client, FAIL_DOWNLOAD, proxy_download
 from project.server.main.grobid import run_grobid
 from project.server.main.utils import get_filename, get_elt_id, get_ip
 from project.server.main.logger import get_logger
@@ -70,11 +70,22 @@ def process_entry(elt, worker_idx = 1):
             result = FAIL_DOWNLOAD
             try:
                 result, _ = standard_download(url, filename, elt_id)
+                if result == SUCCESS_DOWNLOAD:
+                    return
             except:
-                continue
-            logger.debug(result)
-            if result == SUCCESS_DOWNLOAD:
+                pass
+            if elt_id.startswith('hal'):
                 return
+            elif elt_id.startswith('nnt'):
+                return
+            else: #TODO change to activate proxy!
+                return
+            try:
+                result, _ = proxy_download(url, filename, elt_id)
+                if result == SUCCESS_DOWNLOAD:
+                    return
+            except:
+                pass
         logger.debug('---')
     logger.debug(f'download failed for {elt_id}')
 

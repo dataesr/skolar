@@ -44,7 +44,7 @@ def run_process_bso():
     logger.debug(f'splitting bso file in chunk of len 800 000 ; expect 5 files outputs')
     # split_bso_data()
     worker_idx = 1
-    if analyze:
+    if args.get('analyze'):
         inference_app_run('ACKNOWLEDGEMENT')
     for f in os.listdir('/data/bso_chunks'):
         if f.startswith('chunk_bso'):
