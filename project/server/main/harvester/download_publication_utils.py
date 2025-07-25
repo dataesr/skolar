@@ -1,5 +1,6 @@
 import os
 import re
+import magic
 import subprocess
 from time import sleep
 from typing import Tuple
@@ -20,6 +21,7 @@ SUCCESS_DOWNLOAD = 'success'
 FAIL_DOWNLOAD = 'fail'
 ARXIV_HARVESTER = 'arxiv'
 STANDARD_HARVESTER = 'standard'
+PROXY_HARVESTER = 'proxy'
 WILEY_HARVESTER = 'wiley'
 ELSEVIER_HARVESTER = 'elsevier'
 
@@ -59,7 +61,11 @@ def _download_publication(urls, filename, local_entry, wiley_client, elsevier_cl
                     break
             # standard download always done if other methods do not work
             result, harvester_used = standard_download(url, filename, doi)
-            break
+            if result == SUCCESS_DOWNLOAD:
+                break
+            result, harvester_used = proxy_download(url, filename, doi)
+            if result == SUCCESS_DOWNLOAD:
+                break
         except (PublicationDownloadFileException, Exception):
             logger.exception(f'The publication with doi = {doi} download failed with url = {url}', exc_info=True)
             harvester_used, url = '', ''
@@ -112,11 +118,22 @@ def standard_download(url: str, filename: str, p_id: str) -> Tuple[str, str]:
         logger.error(f'The publication with id = {p_id} download failed via standard request. File content is empty')
         raise EmptyFileContentException(
             f'The PDF content returned by _process_request is empty (standard download). p_id = {p_id}, URL = {url}')
-
     logger.debug(f'The publication with id = {p_id} was successfully downloaded via standard request')
     with open(filename, 'wb') as f_out:
         f_out.write(content)
     result, harvester_used = SUCCESS_DOWNLOAD, STANDARD_HARVESTER
+    return result, harvester_used
+
+def proxy_download(url, filename, p_id):
+    result, harvester_used = '', ''
+    output_file = f"{p_id}_tmp.pdf"
+    os.system(f"rm -rf {output_file}")
+    cmd = f"curl --proxy {PROXY_URL} --proxy-user {PROXY_USER}:{PROXY_PASS} -k -g {url} -o {output_file}"
+    os.system(cmd)
+    if os.path.exists(output_file):
+        if 'pdf' in magic.from_file(output_file).lower():
+            os.system(f"mv {output_file} {filename}")
+            result, harvester_used = SUCCESS_DOWNLOAD, PROXY_HARVESTER
     return result, harvester_used
 
 

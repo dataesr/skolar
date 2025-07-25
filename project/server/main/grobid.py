@@ -77,10 +77,8 @@ def parse_grobid(xml_path, publication_id):
         p['publication_id'] = publication_id
         pred = get_lang(p['text'])
         p['lang'] = 'unk'
-        if pred['proba'] > 0.9:
+        if pred['proba'] > 0.7:
             p['lang'] = pred['lang']
-    LANGS = ['en', 'fr', 'es', 'pt', 'it', 'de']
-    paragraphs_filetered = [p for p in paragraphs if p['lang'] in LANGS]
     return paragraphs
 
 #def decompose_text(text):

@@ -163,13 +163,22 @@ def get_path_from_id(id):
     s4 = id[-8:-6].lower()
     return f'{s1}/{s2}/{s3}/{s4}'
 
-def get_filename(elt_id, file_type_input):
+def is_dowloaded(elt_id):
+    filename = get_filename(elt_id, 'grobid')
+    return os.path.isfile(filename)
+
+def has_acknowledgement(elt_id):
+    filename = get_filename(elt_id, 'acknowledgement', 'filter')
+    return os.path.isfile(filename)
+
+def get_filename(elt_id, file_type_input, step=''):
     file_type = file_type_input.lower()
     #assert(file_type in ['pdf', 'grobid', 'acknowledgement'])
     encoded_id = string_to_id(elt_id)
     path_type = file_type
     if file_type in ['acknowledgement', 'software', 'dataset']:
-        path_type = f'llm/{file_type}'
+        assert(step in ['llm', 'filter'])
+        path_type = f'{step}/{file_type}'
     path_prefix = f'/data/{path_type}/' + get_path_from_id(encoded_id) + '/'
     os.system(f'mkdir -p {path_prefix}')
     filename=None

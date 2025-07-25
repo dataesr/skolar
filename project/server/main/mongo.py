@@ -1,4 +1,8 @@
 import pymongo
+from project.server.main.logger import get_logger
+
+logger = get_logger(__name__)
+
 MONGO_URL = 'mongodb://mongo:27017/'
 client=None
 def get_client():
@@ -8,6 +12,7 @@ def get_client():
     return client
 
 def get_oa(dois):
+    logger.debug(f'getting metadata for {len(dois)} DOIs')
     _client = get_client()
     db = _client['unpaywall']
     collections = db.list_collection_names()

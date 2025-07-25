@@ -19,6 +19,10 @@ mentions_map = None
 
 FASTTEXT_INSTALLED = False
 
+def build_train_and_calibrate(args):
+    build_training_all(args)
+    fasttext_calibration()
+
 def install_fasttext():
     global FASTTEXT_INSTALLED
     if FASTTEXT_INSTALLED:
@@ -51,7 +55,7 @@ def infer_type(txt):
         p_type = 'too_long'
     return p_type
 
-def build_training_all():
+def build_training_all(args):
     # raw from Grobid
     data = client_s3.list_objects_v2(Bucket='skolar', Prefix='training/raw_paragraphs_from_grobid')
     existing_files = [e['Key'].split('/')[-1] for e in data['Contents']]
@@ -116,12 +120,16 @@ def build_training_extra(input_filename):
     test_set = lines[:test_lines]
     validation_set = lines[test_lines:test_lines + validation_lines]
     training_set = lines[test_lines + validation_lines:]
+    factor = 100
     with open(f'/data/training/{field}/parts/training/training_{input_filename}', 'w', encoding='utf-8') as file:
-        file.writelines(training_set)
+        for k in range(0, factor):
+            file.writelines(training_set)
     with open(f'/data/training/{field}/parts/validation/validation_{input_filename}', 'w', encoding='utf-8') as file:
-        file.writelines(validation_set)
+        for k in range(0, factor):
+            file.writelines(validation_set)
     with open(f'/data/training/{field}/parts/test/test_{input_filename}', 'w', encoding='utf-8') as file:
-        file.writelines(test_set)
+        for k in range(0, factor):
+            file.writelines(test_set)
 
 def aggregate_training_parts(fields = ALL_FIELDS):
     for field in fields:
@@ -134,6 +142,7 @@ def aggregate_training_parts(fields = ALL_FIELDS):
                 os.system(cmd)
 
 def fasttext_calibration(fields = ALL_FIELDS):
+    logger.debug(f'fasttext_calibration for {fields}')
     install_fasttext()
     os.system(f'mkdir -p /data/models')
     size = "1M"
