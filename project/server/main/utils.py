@@ -11,7 +11,7 @@ import fasttext
 from huggingface_hub import hf_hub_download
 from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_stop
 from project.server.main.logger import get_logger
-    
+
 lid_model = fasttext.load_model('/src/project/server/main/lid.176.ftz')
 
 logger = get_logger(__name__)
@@ -60,16 +60,6 @@ def cp_folder_local_s3(folder_local, folder_distant=None):
     cmd = f'aws s3 cp {folder_local} s3://skolar/{folder_distant}  --recursive'
     logger.debug(f'cp_folder_local_s3 for {folder_local} to {folder_distant} cmd={cmd}')
     os.system(cmd)
-
-def get_instruction_from_hub(repo_id: str) -> str:
-    # Download file
-    file_path = hf_hub_download(repo_id, filename="instruction.txt", repo_type="model")
-
-    # Read file
-    with open(file_path, "r", encoding="utf-8") as file:
-        instruction = file.read()
-
-    return instruction
 
 
 def inference_app_get_id(PARAGRAPH_TYPE: str) -> str:
@@ -136,9 +126,7 @@ def get_models(PARAGRAPH_TYPE):
     fasttext_model = fasttext.load_model(model_path)
     INFERENCE_APP_DATA = ovhai_app_get_data(inference_app_get_id(PARAGRAPH_TYPE))
     INFERENCE_APP_URL = f"{INFERENCE_APP_DATA.get('status', {}).get('url')}/generate"
-    INFERENCE_APP_MODEL = next((env.get("value") for env in INFERENCE_APP_DATA.get("spec", {}).get("envVars", []) if env.get("name") == "MODEL_NAME"), None)
-    instruction = get_instruction_from_hub(INFERENCE_APP_MODEL)
-    return {"fasttext_model": fasttext_model, "inference_instruction": instruction, "inference_url": INFERENCE_APP_URL}
+    return {"fasttext_model": fasttext_model, "inference_url": INFERENCE_APP_URL}
 
 def string_to_id(s):
     # Encoder la chaîne en bytes, puis en base64

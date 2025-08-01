@@ -6,34 +6,34 @@ from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
 
-def chatml_prompts(texts: list, instruction) -> list:
-    # Format texts to chatml
-    prompts = [[{"role": "system", "content": instruction}, {"role": "user", "content": text}] for text in texts]
+def format_prompts(texts: list) -> list:
+    # Format texts here if needed
+    prompts = [text for text in texts]
     return prompts
 
 
-def generate_pipeline(texts: list, inference_url: str, instruction: str):
-    # Format to chatml with instruction from model
-    prompts = chatml_prompts(texts, instruction)
+def generate_pipeline(texts: list, inference_url: str):
+    # Format prompts
+    prompts = format_prompts(texts)
 
     # Submit generation task
     task_id = generate_submit(prompts, inference_url)
-    logger.debug(f'for the {len(texts)} texts, task_id = {task_id}')
-    
-    #for tx, t in enumerate(texts):
+    logger.debug(f"for the {len(texts)} texts, task_id = {task_id}")
+
+    # for tx, t in enumerate(texts):
     #    logger.debug(t)
     #    if tx > 5:
     #        break
 
     # Get generation task completions
     completions = generate_get_completions(task_id, inference_url)  # TODO: add timeout?
-    logger.debug(f'got {len(completions)}')
-    
-    #for tx, t in enumerate(completions):
+    logger.debug(f"got {len(completions)}")
+
+    # for tx, t in enumerate(completions):
     #    logger.debug(t)
     #    if tx > 5:
     #        break
-    
+
     return completions
 
 
@@ -41,12 +41,7 @@ def generate_submit(prompts: list, inference_url: str) -> str:
     submit_url = inference_url
     body = {
         "prompts": prompts,
-        "use_chatml": True,
-        "sampling_params": {
-            "repetition_penalty": 1.1,
-            "frequency_penalty": 0.5,
-            "presence_penalty": 0.1
-        },
+        "sampling_params": {"repetition_penalty": 1.1, "frequency_penalty": 0.5, "presence_penalty": 0.1},
     }
     response = requests.post(submit_url, json=body)
     response.raise_for_status()
@@ -62,6 +57,7 @@ def get_safe(url):
     response = requests.get(url)
     response.raise_for_status()
     return response
+
 
 def generate_get_completions(task_id: str, inference_url: str, timeout: int = None) -> list:
     completions_url = f"{inference_url}/{task_id}"

@@ -62,7 +62,7 @@ def analyze_acknowledgement(filtered_paragraphs):
     inference_app_run(PARAGRAPH_TYPE)
     if len(filtered_paragraphs) == 0:
         return filtered_paragraphs
-    llm_results = generate_pipeline([p["text"] for p in filtered_paragraphs], models["inference_url"], models["inference_instruction"])
+    llm_results = generate_pipeline([p["text"] for p in filtered_paragraphs], models["inference_url"])
     if (len(llm_results) != len(filtered_paragraphs)):
         logger.debug(f'ERROR getting {len(llm_results)} results but had {len(filtered_paragraphs)} inputs paragraphs')
         assert(len(llm_results) != len(filtered_paragraphs))
