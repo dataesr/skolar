@@ -186,6 +186,8 @@ def get_filename(elt_id, file_type_input, step=''):
         filename = path_prefix + encoded_id + '.pdf'
     if file_type == 'grobid':
         filename = path_prefix + encoded_id + '.tei.xml'
+    if file_type == 'publisher-xml':
+        filename = path_prefix + encoded_id + '.publisher.xml'
     if file_type in ['acknowledgement']:
         filename = path_prefix + encoded_id + '.acknowledgement.jsonl'
     assert(isinstance(filename, str))

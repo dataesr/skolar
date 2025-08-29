@@ -96,6 +96,10 @@ def parse_paragraphs(elts):
         xml_path = get_filename(elt_id, 'grobid')
         if os.path.isfile(xml_path):
             xml_paths.append(xml_path)
+        else:
+            xml_path = get_filename(elt_id, 'publisher-xml')
+            if os.path.isfile(xml_path):
+                xml_paths.append(xml_path)
     logger.debug(f'{len(xml_paths)} / {len(elts)} files have an XML')
     nb_already_analyzed = 0
     for xml_path in xml_paths:

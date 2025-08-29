@@ -3,6 +3,7 @@ import os
 import requests
 from project.server.main.harvester.wiley_client import WileyClient
 from project.server.main.harvester.elsevier_client import ElsevierClient
+from project.server.main.harvester.springer_client import SpringerClient
 from project.server.main.harvester.config import config
 from project.server.main.harvester.download_publication_utils import publisher_api_download, standard_download, SUCCESS_DOWNLOAD, safe_instanciation_client, FAIL_DOWNLOAD, proxy_download
 from project.server.main.grobid import run_grobid
@@ -10,19 +11,28 @@ from project.server.main.utils import get_filename, get_elt_id, get_ip
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
-wiley_client, elsevier_client = None, None
 current_ip = get_ip()
+# Wiley
+wiley_client = None
 try:
     wiley_client = safe_instanciation_client(WileyClient, config['WILEY'])
 except:
     logger.debug(f'instantiating WILEY client with ip {current_ip} FAILED')
+# Elsevier
+elsevier_client = None
 try:
     elsevier_client = safe_instanciation_client(ElsevierClient, config['ELSEVIER'])
 except:
     logger.debug(f'instantiating ELSEVIER client with ip {current_ip} FAILED')
+# Springer
+springer_client = None
+try:
+    springer_client = safe_instanciation_client(SpringerClient, config['SPRINGER'])
+except:
+    logger.debug(f'instantiating SPRINGER client with ip {current_ip} FAILED')
 
 def process_entry(elt, worker_idx = 1):
-    global wiley_client, elsevier_client
+    global wiley_client, elsevier_client, springer_client
     result = FAIL_DOWNLOAD
     elt_id = get_elt_id(elt)
     elt['id'] = elt_id
@@ -42,6 +52,8 @@ def process_entry(elt, worker_idx = 1):
         if wiley_client and 'wiley' in publisher.lower():
             result, _ = publisher_api_download(doi, filename, wiley_client)
         if elsevier_client and 'elsevier' in publisher.lower():
+            result, _ = publisher_api_download(doi, filename, elsevier_client)
+        if springer_client and 'springer' in publisher.lower():
             result, _ = publisher_api_download(doi, filename, elsevier_client)
     if result == SUCCESS_DOWNLOAD:
         return
@@ -74,18 +86,18 @@ def process_entry(elt, worker_idx = 1):
                     return
             except:
                 pass
-            if elt_id.startswith('hal'):
-                return
-            elif elt_id.startswith('nnt'):
-                return
-            else: #TODO change to activate proxy!
-                return
-            try:
-                result, _ = proxy_download(url, filename, elt_id)
-                if result == SUCCESS_DOWNLOAD:
-                    return
-            except:
-                pass
+            #if elt_id.startswith('hal'):
+            #    return
+            #elif elt_id.startswith('nnt'):
+            #    return
+            #else: #TODO change to activate proxy!
+            #    return
+            #try:
+            #    result, _ = proxy_download(url, filename, elt_id)
+            #    if result == SUCCESS_DOWNLOAD:
+            #        return
+            #except:
+            #    pass
         logger.debug('---')
     logger.debug(f'download failed for {elt_id}')
 

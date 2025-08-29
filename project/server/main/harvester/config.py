@@ -30,3 +30,14 @@ config["ELSEVIER"] = {
             "window_size": 1
         }
     }
+
+config["SPRINGER"] = {
+        "name": "SPRINGER",
+        "PUBLICATION_URL": os.getenv("SPRINGER_PUBLICATION_URL"),
+        "API_TOKEN": os.getenv("SPRINGER_API_TOKEN"),
+        "health_check_doi": "10.1007/s12549-017-0308-x",
+        "throttle_parameters": {
+            "max_num_requests": 450,
+            "window_size": 86400
+        }
+        }

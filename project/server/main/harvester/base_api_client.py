@@ -18,6 +18,7 @@ class BaseAPIClient(AbstractAPIClient):
         logger.info(f"Initializing the {config['name']} API client")
         self.name = config["name"]
         self.publication_base_url = config["PUBLICATION_URL"]
+        self.api_token = config.get('API_TOKEN', '')
         self._init_throttle(config)
         self.session = self._init_session(config)
 

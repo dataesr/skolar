@@ -24,6 +24,7 @@ STANDARD_HARVESTER = 'standard'
 PROXY_HARVESTER = 'proxy'
 WILEY_HARVESTER = 'wiley'
 ELSEVIER_HARVESTER = 'elsevier'
+SPRINGER_HARVESTER = 'springer'
 PROXY_URL = os.getenv('PROXY_URL')
 PROXY_USER = os.getenv('PROXY_USER')
 PROXY_PASS = os.getenv('PROXY_PASS')
@@ -106,6 +107,8 @@ def publisher_api_download(doi: str, filepath: str, client:BaseAPIClient) -> Tup
             harvester_used = WILEY_HARVESTER
         elif client.name == "elsevier":
             harvester_used = ELSEVIER_HARVESTER
+        elif client.name == "springer":
+            harvester_used = SPRINGER_HARVESTER
         else:
             harvester_used = 'unknown harvester ??'
         logger.error(
