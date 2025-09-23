@@ -64,7 +64,7 @@ def cp_folder_local_s3(folder_local, folder_distant=None):
 
 def inference_app_get_id(PARAGRAPH_TYPE: str) -> str:
     app_id = os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID")
-    assert (app_id, str)
+    assert isinstance(app_id, str)
     return app_id
 
 

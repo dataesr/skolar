@@ -4,6 +4,7 @@ import redis
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 from rq import Connection, Queue
+from project.server.main.inference.test_model import model_inference
 from project.server.main.pipeline import run_from_file
 from project.server.main.logger import get_logger
 from project.server.main.training.build_training import build_train_and_calibrate
@@ -55,6 +56,17 @@ def run_process_bso():
                 worker_idx += 1
             response_object = {"status": "success", "data": {"task_id": task.get_id()}}
     return jsonify(response_object), 202
+
+
+@main_blueprint.route("/inference", methods=["POST"])
+def run_inference():
+    args = request.get_json(force=True)
+    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+        q = Queue(name="skolar", default_timeout=default_timeout)
+        task = q.enqueue(model_inference, args)
+    response_object = {"status": "success", "data": {"task_id": task.get_id()}}
+    return jsonify(response_object), 202
+
 
 @main_blueprint.route("/tasks/<task_id>", methods=["GET"])
 def get_status(task_id):

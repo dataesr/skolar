@@ -17,7 +17,7 @@ def ovhai_initialize():
     logger.info("✅ OVHAI CLI initialized!")
 
 
-def ovhai_app_get_data(app_id: str) -> object:
+def ovhai_app_get_data(app_id: str) -> dict:
     """
     Get ovh ai app data as json
 
@@ -30,13 +30,32 @@ def ovhai_app_get_data(app_id: str) -> object:
     # get app json data
     cmd = f"ovhai app get {app_id} -o json"
     result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
-    #logger.debug(f"result: {result}")
     result.check_returncode()
-
-    # parse results
     data = json.loads(result.stdout)
-    #logger.debug(f"data: {data}")
     return data
+
+
+def ovhai_app_update_env(app_id: str, env_name: str, env_value: str):
+    """
+    Update env variable of existing ovhai app
+
+    Args:
+    - app_id (str): app id
+    """
+    cmd = f"ovhai app update {app_id} --env {env_name}={env_value}"
+    result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
+    result.check_returncode()
+    data = json.loads(result.stdout)
+
+    # check modification is ok
+    envs = data["spec"]["envVars"]
+    for env in envs:
+        if env["name"] == env_name and env["value"] == env_value:
+            logger.debug(f"Successfully updated app env {env_name}")
+            return data
+    logger.error(f"Error while updating app environment {env_name}")
+
+    return None
 
 
 def ovhai_app_start(app_id: str):
