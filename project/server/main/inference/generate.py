@@ -12,12 +12,12 @@ def format_prompts(texts: list) -> list:
     return prompts
 
 
-def generate_pipeline(texts: list, inference_url: str):
+def generate_pipeline(texts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None):
     # Format prompts
     prompts = format_prompts(texts)
 
     # Submit generation task
-    task_id = generate_submit(prompts, inference_url)
+    task_id = generate_submit(prompts, inference_url, chat_template_params, sampling_params)
     logger.debug(f"for the {len(texts)} texts, task_id = {task_id}")
 
     # for tx, t in enumerate(texts):
@@ -37,12 +37,16 @@ def generate_pipeline(texts: list, inference_url: str):
     return completions
 
 
-def generate_submit(prompts: list, inference_url: str) -> str:
+def generate_submit(
+    prompts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None
+) -> str:
     submit_url = inference_url
-    body = {
-        "prompts": prompts,
-        "sampling_params": {"repetition_penalty": 1.1, "frequency_penalty": 0.5, "presence_penalty": 0.1},
-    }
+    body = {"prompts": prompts}
+    if chat_template_params:
+        body["chat_template_params"] = chat_template_params
+    if sampling_params:
+        body["sampling_params"] = sampling_params
+
     response = requests.post(submit_url, json=body)
     response.raise_for_status()
     data = response.json()
