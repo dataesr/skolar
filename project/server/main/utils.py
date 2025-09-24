@@ -95,7 +95,7 @@ def inference_app_run(PARAGRAPH_TYPE: str, timeout: int = 60 * 15):
         if app_state in ("STOPPING", "STOPPED"):
             logger.debug(f"app {PARAGRAPH_TYPE} not started, restarting...")
             ovhai_app_start(inference_app_get_id(PARAGRAPH_TYPE))
-            time.sleep(60 * 5)
+            time.sleep(10)
 
 
 def inference_app_stop(PARAGRAPH_TYPE: str):

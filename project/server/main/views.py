@@ -58,12 +58,18 @@ def run_process_bso():
     return jsonify(response_object), 202
 
 
+def inference_failure_callback(job, exc_type, exc_value, traceback):
+    logger.warning(f"Job {job.id} failed with exception: {exc_value}")
+    logger.warning(f"Stopping inference base app...")
+    inference_app_stop("BASE")
+
+
 @main_blueprint.route("/inference", methods=["POST"])
 def run_inference():
     args = request.get_json(force=True)
     with Connection(redis.from_url(current_app.config["REDIS_URL"])):
         q = Queue(name="skolar", default_timeout=default_timeout)
-        task = q.enqueue(model_inference, args)
+        task = q.enqueue(model_inference, args, on_failure=inference_failure_callback)
     response_object = {"status": "success", "data": {"task_id": task.get_id()}}
     return jsonify(response_object), 202
 

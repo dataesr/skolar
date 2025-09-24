@@ -22,7 +22,7 @@ def format_prompts(texts: list) -> list:
 
 def generate_pipeline(
     texts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None
-) -> tuple[list, dict]:
+) -> tuple:
     """Pipeline for generation of completions
 
     Args:
@@ -95,7 +95,7 @@ def get_safe(url):
     return response
 
 
-def generate_get_completions(task_id: str, inference_url: str, timeout: int = None) -> tuple[list, dict]:
+def generate_get_completions(task_id: str, inference_url: str, timeout: int = None) -> tuple:
     """Get results of a generation task
 
     Args:

@@ -5,9 +5,9 @@ import pandas as pd
 from datasets import load_dataset
 from project.server.main.inference.generate import generate_pipeline
 from project.server.main.logger import get_logger
-from project.server.main.ovhai import ovhai_app_start, ovhai_app_update_env
+from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_update_env
 from project.server.main.s3 import upload_s3
-from project.server.main.utils import inference_app_get_id, inference_app_run
+from project.server.main.utils import inference_app_get_id, inference_app_run, inference_app_stop
 
 logger = get_logger(__name__)
 
@@ -32,8 +32,11 @@ def get_dataset_from_hf(dataset_name: str, dataset_split: str) -> pd.DataFrame:
 
 
 def model_start_app(model_name: str) -> str:
-    # Get base inforence app id
+    # Get base inference app id
     app_id = inference_app_get_id("BASE")
+
+    # Make sure app is stopped
+    inference_app_stop("BASE")
 
     # Update env of base inference app
     app_data = ovhai_app_update_env(app_id, env_name="MODEL_NAME", env_value=model_name)
@@ -51,21 +54,27 @@ def model_start_app(model_name: str) -> str:
 
 def write_results(df: pd.DataFrame, config: dict):
     current_time = time.strftime("%Y%m%d_%H%M")
-    export_path = os.path.join(BUCKET, config["model_name"], current_time)
+    export_path = os.path.join(f"./{BUCKET}", config["model_name"], current_time)
+    if not os.path.exists(export_path):
+        os.makedirs(export_path)
+
     config_path = os.path.join(export_path, "config.json")
     completions_path = os.path.join(export_path, "completions.json")
 
     # Write files to disk
-    if df and config:
+    if len(df) and config:
         df.to_json(completions_path, orient="records")
         with open(config_path, "w") as file:
             json.dump(config, file)
 
         # Export files to s3
-        upload_s3("llm-finetuning", completions_path, completions_path)
-        upload_s3("llm-finetuning", config_path, config_path)
+        upload_s3(BUCKET, completions_path, os.path.relpath(completions_path, f"./{BUCKET}"), is_public=None)
+        upload_s3(BUCKET, config_path, os.path.relpath(config_path, f"./{BUCKET}"), is_public=None)
 
         logger.debug("Successfully saved dataframe and config json file")
+        return
+
+    logger.warning(f"Results not saved because df length={len(df)} or {config=}")
 
 
 def model_inference(args: dict):
@@ -91,7 +100,7 @@ def model_inference(args: dict):
 
     # Get dataset_from_huggingface
     dataset = get_dataset_from_hf(dataset_name, dataset_split)
-    texts = dataset["inputs"].to_list()
+    texts = dataset["input"].to_list()
     config["dataset_len"] = len(dataset)
 
     # Load inference app
@@ -110,6 +119,9 @@ def model_inference(args: dict):
     else:
         logger.info(f"✅ Generated {len(completions)}")
         dataset["completions"] = pd.Series(completions)
+
+    # Stop inference app
+    inference_app_stop("BASE")
 
     # Write results on s3
     write_results(dataset, config)

@@ -42,7 +42,7 @@ def ovhai_app_update_env(app_id: str, env_name: str, env_value: str):
     Args:
     - app_id (str): app id
     """
-    cmd = f"ovhai app update {app_id} --env {env_name}={env_value}"
+    cmd = f"ovhai app update {app_id} --env {env_name}={env_value} -o json"
     result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
     result.check_returncode()
     data = json.loads(result.stdout)
