@@ -7,12 +7,33 @@ logger = get_logger(__name__)
 
 
 def format_prompts(texts: list) -> list:
+    """Format texts to prompts
+
+    Args:
+        texts (list): list of texts
+
+    Returns:
+        list: formatted prompts
+    """
     # Format texts here if needed
     prompts = [text for text in texts]
     return prompts
 
 
-def generate_pipeline(texts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None):
+def generate_pipeline(
+    texts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None
+) -> tuple[list, dict]:
+    """Pipeline for generation of completions
+
+    Args:
+        texts (list): list of texts
+        inference_url (str): inference app url
+        chat_template_params (dict, optional): chat template additionnal params
+        sampling_params (dict, optional): inference sampling params
+
+    Returns:
+        tuple[list, dict]: completions, task_data
+    """
     # Format prompts
     prompts = format_prompts(texts)
 
@@ -26,7 +47,7 @@ def generate_pipeline(texts: list, inference_url: str, chat_template_params: dic
     #        break
 
     # Get generation task completions
-    completions = generate_get_completions(task_id, inference_url)  # TODO: add timeout?
+    completions, task_data = generate_get_completions(task_id, inference_url)  # TODO: add timeout?
     logger.debug(f"got {len(completions)}")
 
     # for tx, t in enumerate(completions):
@@ -34,12 +55,23 @@ def generate_pipeline(texts: list, inference_url: str, chat_template_params: dic
     #    if tx > 5:
     #        break
 
-    return completions
+    return completions, task_data
 
 
 def generate_submit(
     prompts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None
 ) -> str:
+    """Submit a generation task
+
+    Args:
+        prompts (list): list of prompts
+        inference_url (str): inference app url
+        chat_template_params (dict, optional): chat template additionnal params
+        sampling_params (dict, optional): inference sampling params
+
+    Returns:
+        str: submitted task id
+    """
     submit_url = inference_url
     body = {"prompts": prompts}
     if chat_template_params:
@@ -63,7 +95,17 @@ def get_safe(url):
     return response
 
 
-def generate_get_completions(task_id: str, inference_url: str, timeout: int = None) -> list:
+def generate_get_completions(task_id: str, inference_url: str, timeout: int = None) -> tuple[list, dict]:
+    """Get results of a generation task
+
+    Args:
+        task_id (str): task id
+        inference_url (str): inference app url
+        timeout (int, optional): timeout of catching task results
+
+    Returns:
+        tuple[list, dict]: completions, task_data
+    """
     completions_url = f"{inference_url}/{task_id}"
     start_time = time.time()
 
@@ -90,8 +132,8 @@ def generate_get_completions(task_id: str, inference_url: str, timeout: int = No
             continue
 
         assert task_status == "done"
-        completions = data.get("completions")
+        completions = data.pop("completions")
         if not isinstance(completions, list):
             logger.error(f"Generate task {task_id} error: invalid completions format ({type(completions)})")
             raise ValueError(f"Generate task {task_id} error: invalid completions format ({type(completions)})")
-        return completions
+        return completions, data

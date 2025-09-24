@@ -98,9 +98,8 @@ def model_inference(args: dict):
     inference_url = model_start_app(model_name)
 
     # Generate completions
-    generation_start_t = time.time()
-    completions = generate_pipeline(texts, inference_url, chat_template_params, sampling_params)
-    config["duration"] = time.time() - generation_start_t
+    completions, task_data = generate_pipeline(texts, inference_url, chat_template_params, sampling_params)
+    config["duration"] = task_data.get("done_at") - task_data.get("running_at")
 
     # Check completions
     assert isinstance(completions, list)
