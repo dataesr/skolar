@@ -5,14 +5,13 @@ import pandas as pd
 from datasets import load_dataset
 from project.server.main.inference.generate import generate_pipeline
 from project.server.main.logger import get_logger
-from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_update_env
+from project.server.main.ovhai import ovhai_app_update_env
 from project.server.main.s3 import upload_s3
 from project.server.main.utils import inference_app_get_id, inference_app_run, inference_app_stop
 
 logger = get_logger(__name__)
 
-BUCKET = "llm-completions"
-
+BUCKET = "skolar-completions"
 
 def get_dataset_from_hf(dataset_name: str, dataset_split: str) -> pd.DataFrame:
     logger.info(f"Start loading huggingface dataset {dataset_name} (split={dataset_split})")
