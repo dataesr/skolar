@@ -1,27 +1,52 @@
 import requests
-from retry import retry
 import time
+import json
+from retry import retry
 from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def format_prompts(texts: list) -> list:
+def format_prompts(texts: list, model_name: str = None, chat_template_params: dict = None) -> list:
     """Format texts to prompts
 
     Args:
         texts (list): list of texts
+        model_name (str, optional): flag to format according to specific model
+        chat_template_params (dict, optional): additional params
 
     Returns:
         list: formatted prompts
     """
     # Format texts here if needed
+    if model_name in ["numind/NuExtract-1.5-tiny", "numind/NuExtract-1.5", "dataesr/NuExtract-2.0-2B-causalLM"]:
+        if "nuextract_template" in chat_template_params:
+            template = chat_template_params.pop("nuextract_template")
+            template = json.dumps(json.loads(template), indent=4)
+            prompts = [f"""### Template:\n{template}\n### Text:\n{text}\n""" for text in texts]
+            logger.debug(f"Formatted prompts as NuExtract: {prompts[0]}")
+            return prompts
+        else:
+            logger.error(f"Missing 'nuextract_template' to format prompts as NuExtract 1.5 models")
+            raise KeyError(f"Missing 'nuextract_template' to format prompts as NuExtrac 1.5 models")
+
+    if model_name in ["dataesr/NuExtract-2.0-2B-causalLM"]:
+        if "nuextract_template" in chat_template_params:
+            template = chat_template_params.pop("nuextract_template")
+            template = json.dumps(json.loads(template), indent=4)
+            prompts = [f"""# Template:\n{template}\n# Context:\n{text}\n""" for text in texts]
+            logger.debug(f"Formatted prompts as NuExtract: {prompts[0]}")
+            return prompts
+        else:
+            logger.error(f"Missing 'nuextract_template' to format prompts as NuExtract 2.0 models")
+            raise KeyError(f"Missing 'nuextract_template' to format prompts as NuExtrac 2.0 models")
+
     prompts = [text for text in texts]
     return prompts
 
 
 def generate_pipeline(
-    texts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None
+    texts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None, format_as: str = None
 ) -> tuple:
     """Pipeline for generation of completions
 
@@ -35,7 +60,7 @@ def generate_pipeline(
         tuple[list, dict]: completions, task_data
     """
     # Format prompts
-    prompts = format_prompts(texts)
+    prompts = format_prompts(texts, model_name=format_as, chat_template_params=chat_template_params)
 
     # Submit generation task
     task_id = generate_submit(prompts, inference_url, chat_template_params, sampling_params)

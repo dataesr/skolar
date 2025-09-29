@@ -58,7 +58,7 @@ def run_process_bso():
     return jsonify(response_object), 202
 
 
-def inference_failure_callback(job, exc_type, exc_value, traceback):
+def inference_failure_callback(job, connection, exc_type, exc_value, traceback):
     logger.warning(f"Job {job.id} failed with exception: {exc_value}")
     logger.warning(f"Stopping inference base app...")
     inference_app_stop("BASE")
