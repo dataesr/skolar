@@ -80,19 +80,16 @@ def model_inference(args: dict):
     model_name = args["model_name"]
     dataset_name = args["dataset_name"]
     dataset_split = args.get("dataset_split", "eval")
-    instruction = args["instruction"]
-    chat_template = args.get("chat_template_kwargs", {})
+    prompts_params = args.get("prompts_params", {})
     sampling_params = args.get("sampling_params", {})
 
     config = {
         "model_name": model_name,
         "dataset_name": dataset_name,
         "dataset_split": dataset_split,
-        "instruction": instruction,
-        "chat_template_kwargs": chat_template or None,
+        "prompts_params": prompts_params or None,
         "sampling_params": sampling_params or None,
     }
-    chat_template_params = {"instruction": instruction, **chat_template}
 
     logger.info(f"▶️ Start inference of model {model_name}")
     logger.debug(f"{dataset_name =}, {dataset_split =}")
@@ -106,7 +103,7 @@ def model_inference(args: dict):
     inference_url = model_start_app(model_name)
 
     # Generate completions
-    completions, task_data = generate_pipeline(texts, inference_url, chat_template_params, sampling_params, model_name)
+    completions, task_data = generate_pipeline(texts, inference_url, prompts_params, sampling_params, model_name)
     config["duration"] = task_data.get("done_at") - task_data.get("running_at")
 
     # Check completions

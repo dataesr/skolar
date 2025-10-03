@@ -7,21 +7,21 @@ from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
 
-def format_prompts(texts: list, model_name: str = None, chat_template_params: dict = None) -> list:
+def format_prompts(texts: list, model_name: str = None, prompts_params: dict = None) -> list:
     """Format texts to prompts
 
     Args:
         texts (list): list of texts
         model_name (str, optional): flag to format according to specific model
-        chat_template_params (dict, optional): additional params
+        prompts_params (dict, optional): additional params
 
     Returns:
         list: formatted prompts
     """
     # Format texts here if needed
     if model_name in ["numind/NuExtract-1.5-tiny", "numind/NuExtract-1.5", "dataesr/NuExtract-2.0-2B-causalLM"]:
-        if "nuextract_template" in chat_template_params:
-            template = chat_template_params.pop("nuextract_template")
+        if "nuextract_template" in prompts_params:
+            template = prompts_params.pop("nuextract_template")
             template = json.dumps(json.loads(template), indent=4)
             prompts = [f"""### Template:\n{template}\n### Text:\n{text}\n""" for text in texts]
             logger.debug(f"Formatted prompts as NuExtract: {prompts[0]}")
@@ -31,8 +31,8 @@ def format_prompts(texts: list, model_name: str = None, chat_template_params: di
             raise KeyError(f"Missing 'nuextract_template' to format prompts as NuExtrac 1.5 models")
 
     if model_name in ["dataesr/NuExtract-2.0-2B-causalLM"]:
-        if "nuextract_template" in chat_template_params:
-            template = chat_template_params.pop("nuextract_template")
+        if "nuextract_template" in prompts_params:
+            template = prompts_params.pop("nuextract_template")
             template = json.dumps(json.loads(template), indent=4)
             prompts = [f"""# Template:\n{template}\n# Context:\n{text}\n""" for text in texts]
             logger.debug(f"Formatted prompts as NuExtract: {prompts[0]}")
@@ -46,24 +46,24 @@ def format_prompts(texts: list, model_name: str = None, chat_template_params: di
 
 
 def generate_pipeline(
-    texts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None, format_as: str = None
+    texts: list, inference_url: str, prompts_params: dict = None, sampling_params: dict = None, format_as: str = None
 ) -> tuple:
     """Pipeline for generation of completions
 
     Args:
         texts (list): list of texts
         inference_url (str): inference app url
-        chat_template_params (dict, optional): chat template additionnal params
+        prompts_params (dict, optional): prompts params (instruction, chat_template, text_format..)
         sampling_params (dict, optional): inference sampling params
 
     Returns:
         tuple[list, dict]: completions, task_data
     """
     # Format prompts
-    prompts = format_prompts(texts, model_name=format_as, chat_template_params=chat_template_params)
+    prompts = format_prompts(texts, model_name=format_as, prompts_params=prompts_params)
 
     # Submit generation task
-    task_id = generate_submit(prompts, inference_url, chat_template_params, sampling_params)
+    task_id = generate_submit(prompts, inference_url, prompts_params, sampling_params)
     logger.debug(f"for the {len(texts)} texts, task_id = {task_id}")
 
     # for tx, t in enumerate(texts):
@@ -83,15 +83,13 @@ def generate_pipeline(
     return completions, task_data
 
 
-def generate_submit(
-    prompts: list, inference_url: str, chat_template_params: dict = None, sampling_params: dict = None
-) -> str:
+def generate_submit(prompts: list, inference_url: str, prompts_params: dict = None, sampling_params: dict = None) -> str:
     """Submit a generation task
 
     Args:
         prompts (list): list of prompts
         inference_url (str): inference app url
-        chat_template_params (dict, optional): chat template additionnal params
+        prompts_params (dict, optional): prompts additionnal params
         sampling_params (dict, optional): inference sampling params
 
     Returns:
@@ -99,8 +97,8 @@ def generate_submit(
     """
     submit_url = inference_url
     body = {"prompts": prompts}
-    if chat_template_params:
-        body["chat_template_params"] = chat_template_params
+    if prompts_params:
+        body["prompts_params"] = prompts_params
     if sampling_params:
         body["sampling_params"] = sampling_params
 
