@@ -19,28 +19,6 @@ def format_prompts(texts: list, model_name: str = None, prompts_params: dict = N
         list: formatted prompts
     """
     # Format texts here if needed
-    if model_name in ["numind/NuExtract-1.5-tiny", "numind/NuExtract-1.5", "dataesr/NuExtract-2.0-2B-causalLM"]:
-        if "nuextract_template" in prompts_params:
-            template = prompts_params.pop("nuextract_template")
-            template = json.dumps(json.loads(template), indent=4)
-            prompts = [f"""### Template:\n{template}\n### Text:\n{text}\n""" for text in texts]
-            logger.debug(f"Formatted prompts as NuExtract: {prompts[0]}")
-            return prompts
-        else:
-            logger.error(f"Missing 'nuextract_template' to format prompts as NuExtract 1.5 models")
-            raise KeyError(f"Missing 'nuextract_template' to format prompts as NuExtrac 1.5 models")
-
-    if model_name in ["dataesr/NuExtract-2.0-2B-causalLM"]:
-        if "nuextract_template" in prompts_params:
-            template = prompts_params.pop("nuextract_template")
-            template = json.dumps(json.loads(template), indent=4)
-            prompts = [f"""# Template:\n{template}\n# Context:\n{text}\n""" for text in texts]
-            logger.debug(f"Formatted prompts as NuExtract: {prompts[0]}")
-            return prompts
-        else:
-            logger.error(f"Missing 'nuextract_template' to format prompts as NuExtract 2.0 models")
-            raise KeyError(f"Missing 'nuextract_template' to format prompts as NuExtrac 2.0 models")
-
     prompts = [text for text in texts]
     return prompts
 
