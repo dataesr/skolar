@@ -8,6 +8,7 @@ from project.server.main.inference.test_model import model_inference
 from project.server.main.pipeline import run_from_file
 from project.server.main.logger import get_logger
 from project.server.main.training.build_training import build_train_and_calibrate
+from project.server.main.training.hf import build_dataset
 from project.server.main.utils import get_bso_data, inference_app_run, inference_app_stop
 
 default_timeout = 4320000
@@ -28,6 +29,15 @@ def home():
 def run_stop():
     inference_app_stop('ACKNOWLEDGEMENT')
     return jsonify({'res': 'ok'}), 202
+
+@main_blueprint.route("/hf", methods=["POST"])
+def run_hf():
+    args = request.get_json(force=True)
+    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+        q = Queue(name="skolar", default_timeout=default_timeout)
+        task = q.enqueue(build_dataset, args)
+    response_object = {"status": "success", "data": {"task_id": task.get_id()}}
+    return jsonify(response_object), 202
 
 @main_blueprint.route("/train", methods=["POST"])
 def run_train():
