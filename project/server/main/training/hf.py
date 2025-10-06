@@ -30,10 +30,50 @@ OA_FIELDS = [
 OA_FIELDS_STR = ','.join(OA_FIELDS)
 oa_cache = {}
 
+def parse():
+    parsed_data = []
+    for input_filename in os.listdir('/data/training/hf/'):
+        if 'enriched_sampled_parsed_' not in input_filename:
+            continue
+        logger.debug(f'reading {input_filename}')
+        df = pd.read_json(f'/data/training/hf/{input_filename}', lines=True)
+        data_tmp = df.to_dict(orient='records')
+        parsed_data_tmp = []
+        for e in data_tmp:
+            new_elt = {}
+            if not isinstance(e.get('locations'), list):
+                continue
+            for loc in e['locations']:
+                if 'cc-by' in str(loc.get('license')):
+                    new_elt['license'] = 'cc-by'
+            if new_elt.get('license') is None:
+                continue
+            for f in ['text', 'doi', 'type', 'detected_lang', 'publication_year', 'is_dataset', 'is_software', 'is_acknowledgement', 'is_clinicaltrial']:
+                new_elt[f] = e[f]
+            if not isinstance(e['primary_topic'], dict):
+                continue
+            keep = False
+            for f in ['is_dataset', 'is_software', 'is_acknowledgement', 'is_clinicaltrial']:
+                if e[f]:
+                    keep = True
+            if keep is False:
+                continue
+            new_elt['field_name'] = e['primary_topic']['field']['display_name']
+            new_elt['field_id'] = e['primary_topic']['field']['id']
+            parsed_data_tmp.append(new_elt)
+        logger.debug(f'{len(parsed_data_tmp)} elts kept over {len(data_tmp)}')
+        parsed_data += parsed_data_tmp
+    pd.DataFrame(parsed_data).to_csv('/data/training/hf/text_categorization.csv.gz', index=False)
+
+
 def build_dataset(args):
     fields = ALL_FIELDS
     for input_filename in os.listdir('/data/training/raw_paragraphs_from_grobid/'):
-        if os.isfile(f'/data/training/hf/enriched_{input_filename}'):
+        nb_idx = args.get('nb_idx')
+        assert(isinstance(nb_idx, str))
+        if f'sampled_parsed_{nb_idx}' not in input_filename:
+            continue
+        if os.path.isfile(f'/data/training/hf/enriched_{input_filename}'):
             continue
         local_filename = f'/data/training/raw_paragraphs_from_grobid/{input_filename}'
         data = pd.read_json(local_filename, lines=True).to_dict(orient='records')
