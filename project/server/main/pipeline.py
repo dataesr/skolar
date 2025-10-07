@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from project.server.main.harvester.test import process_publication
 from project.server.main.grobid import parse_grobid
-from project.server.main.inference.acknowledgement import detect_acknowledgement, analyze_acknowledgement
+from project.server.main.inference.acknowledgement import detect_acknowledgement, analyze_acknowledgement, get_mistral_answer
 from project.server.main.utils import (
     inference_app_run,
     inference_app_stop,
@@ -72,7 +72,9 @@ def run_from_file(input_file, args, worker_idx):
         if paragraphs and detect:
             filtered_paragraphs = detect_acknowledgement(paragraphs)
         if filtered_paragraphs and analyze:
-            detections = analyze_acknowledgement(filtered_paragraphs)
+            for p in filtered_paragraphs:
+                get_mistral_answer(p)
+        #    detections = analyze_acknowledgement(filtered_paragraphs)
         if early_stop:
             break
 
