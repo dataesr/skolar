@@ -54,7 +54,7 @@ def process_entry(elt, worker_idx = 1):
         if elsevier_client and 'elsevier' in publisher.lower():
             result, _ = publisher_api_download(doi, filename, elsevier_client)
         if springer_client and 'springer' in publisher.lower():
-            result, _ = publisher_api_download(doi, filename, elsevier_client)
+            result, _ = publisher_api_download(doi, filename, springer_client)
     if result == SUCCESS_DOWNLOAD:
         return
     oa_locations = []

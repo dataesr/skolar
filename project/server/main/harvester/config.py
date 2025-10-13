@@ -33,6 +33,7 @@ config["ELSEVIER"] = {
 
 config["SPRINGER"] = {
         "name": "SPRINGER",
+        "HEADERS": {},
         "PUBLICATION_URL": os.getenv("SPRINGER_PUBLICATION_URL"),
         "API_TOKEN": os.getenv("SPRINGER_API_TOKEN"),
         "health_check_doi": "10.1007/s12549-017-0308-x",

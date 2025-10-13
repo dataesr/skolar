@@ -30,7 +30,7 @@ OA_FIELDS = [
 OA_FIELDS_STR = ','.join(OA_FIELDS)
 oa_cache = {}
 
-def parse():
+def parse(args):
     parsed_data = []
     for input_filename in os.listdir('/data/training/hf/'):
         if 'enriched_sampled_parsed_' not in input_filename:

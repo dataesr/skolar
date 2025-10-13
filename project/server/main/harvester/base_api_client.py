@@ -7,7 +7,6 @@ from project.server.main.harvester.file import write_to_file
 
 from project.server.main.logger import get_logger
 
-
 logger = get_logger(__name__)
 
 class FailedRequest(PublicationDownloadFileException):
@@ -36,7 +35,7 @@ class BaseAPIClient(AbstractAPIClient):
         session.headers.update(config["HEADERS"])
         publication_url = self._get_publication_url(config["health_check_doi"])
         response = session.get(publication_url)
-        if not response.ok or not response.text[:5] == "%PDF-":
+        if not response.ok or response.text[:5] not in ["%PDF-"]:
             raise FailedRequest(
                 f"First request to initialize the session failed. "
                 f"Make sure the publication {config['health_check_doi']} can be downloaded using the {self.name} API. "
