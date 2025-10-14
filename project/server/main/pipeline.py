@@ -34,6 +34,11 @@ def enrich_with_metadata(df):
         new_data.append(e)
     return new_data
 
+def test():
+    input_file = '/src/validation/validation_from_florian_naudet_constant_vinatier.csv'
+    df = pd.read_csv(input_file)
+    elts = df.to_dict(orient='records')[0:1]
+
 def get_from_live_unpaywall(doi):
     url = f'https://api.unpaywall.org/v2/{doi}?email=unpaywall_01@example.com'
     return requests.get(url).json()

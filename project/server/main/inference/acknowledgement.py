@@ -2,6 +2,7 @@ import pickle
 import re
 import os
 import fasttext
+import requests
 import pandas as pd
 from project.server.main.paragraphs.acknowledgement import is_acknowledgement
 from project.server.main.inference.generate import generate_pipeline
@@ -94,6 +95,7 @@ def get_mistral_answer(p):
     filename = get_filename(p['publication_id'], PARAGRAPH_TYPE, 'llm')
     analyzed['publication_id'] = p['publication_id']
     json.dump(analyzed, open(filename, 'w'))
+    return analyzed
 
 
 def parse_md(res_md):

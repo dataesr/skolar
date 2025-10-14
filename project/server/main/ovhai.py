@@ -29,9 +29,13 @@ def ovhai_app_get_data(app_id: str) -> dict:
     """
     # get app json data
     cmd = f"ovhai app get {app_id} -o json"
-    result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
-    result.check_returncode()
-    data = json.loads(result.stdout)
+    data = {}
+    try:
+        result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
+        result.check_returncode()
+        data = json.loads(result.stdout)
+    except:
+        logger.debug(f'error in ovhai_app_get_data for {app_id}')
     return data
 
 
