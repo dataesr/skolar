@@ -38,3 +38,4 @@ pymongo==3.8.0
 cloudscraper==1.2.58
 huggingface_hub
 python-magic==0.4.27
+orjson

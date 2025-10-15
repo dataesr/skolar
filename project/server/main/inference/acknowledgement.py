@@ -1,12 +1,13 @@
 import pickle
 import re
 import os
+import json
 import fasttext
 import requests
 import pandas as pd
 from project.server.main.paragraphs.acknowledgement import is_acknowledgement
 from project.server.main.inference.generate import generate_pipeline
-from project.server.main.utils import download_file, clean_dir, get_models, inference_app_run, get_filename
+from project.server.main.utils import download_file, clean_dir, get_models, inference_app_run, get_filename, read_jsonl, write_jsonl
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
@@ -35,12 +36,12 @@ def detect_acknowledgement(paragraphs):
     max_paragraph_len = 0
     publi_id_map = {}
     for paragraph in paragraphs:
-        if paragraph['lang'] not in LANGS:
-            logger.debug(f'skip paragraph {paragraph} because of lang')
-            continue
         publi_id = paragraph['publication_id']
         if publi_id not in publi_id_map:
             publi_id_map[publi_id] = []
+        if paragraph['lang'] not in LANGS:
+            #logger.debug(f'skip paragraph {paragraph} because of lang')
+            continue
         if infere_is_acknowledgement(paragraph, models['fasttext_model']):
             if len(paragraph.get('text').split(' ')) < 10:
                 continue
@@ -55,11 +56,10 @@ def detect_acknowledgement(paragraphs):
     for publi_id in publi_id_map:
         filename = get_filename(publi_id, PARAGRAPH_TYPE, 'filter')
         df_tmp = pd.DataFrame(publi_id_map[publi_id])
-        if len(df_tmp):
-            df_tmp.to_json(filename, orient='records', lines=True)
+        df_tmp.to_json(filename, orient='records', lines=True)
     return filtered_paragraphs
 
-def analyze_acknowledgement(filtered_paragraphs):
+def analyze_acknowledgement(filtered_paragraphs): # NOT USED
     inference_app_run(PARAGRAPH_TYPE)
     if len(filtered_paragraphs) == 0:
         return filtered_paragraphs
@@ -82,20 +82,34 @@ def analyze_acknowledgement(filtered_paragraphs):
     return filtered_paragraphs
 
 
-def get_mistral_answer(p):
-    messages = [{'role': 'user', 'content': p['text']}]
-    r = requests.post(os.getenv('MISTRAL_COMPLETION_URL'), json = {'messages': message, 'agent_id': os.getenv('MISTRAL_AGENT_ACK_ID')},
+def get_mistral_answer(filename_paragraph):
+    paragraphs, analyzed_all = [], []
+    try:
+        paragraphs = read_jsonl(filename_paragraph)
+    except:
+        logger.debug(f'error loading filename_paragraph {filename_paragraph}')
+        return {}
+    for p in paragraphs:
+        messages = [{'role': 'user', 'content': p['text']}]
+        r = requests.post(os.getenv('MISTRAL_COMPLETION_URL'), json = {'messages': messages, 'agent_id': os.getenv('MISTRAL_AGENT_ACK_ID')},
                   headers={
                       'Authorization': 'Bearer '+os.getenv('MISTRAL_API_KEY'),
                       'Accept': 'application/json',
                       'Content-Type': 'application/json'
                   })
-    res_md = r.json()['choices'][0]['message']['content']
-    analyzed = parse_md(res_md)
+        try:
+            res_md = r.json()['choices'][0]['message']['content']
+            analyzed = parse_md(res_md)
+            analyzed['publication_id'] = p['publication_id']
+            analyzed['text'] = p['text']
+            analyzed_all.append(analyzed)
+        except:
+            logger.debug(f'error in response from LLM : {r.text}')
+            logger.debug(f"input was {p['text']}")
+            continue
     filename = get_filename(p['publication_id'], PARAGRAPH_TYPE, 'llm')
-    analyzed['publication_id'] = p['publication_id']
-    json.dump(analyzed, open(filename, 'w'))
-    return analyzed
+    write_jsonl(analyzed_all, filename)
+    return analyzed_all
 
 
 def parse_md(res_md):

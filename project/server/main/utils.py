@@ -8,6 +8,7 @@ import requests
 import base64
 import time
 import fasttext
+import orjson
 from huggingface_hub import hf_hub_download
 from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_stop
 from project.server.main.logger import get_logger
@@ -15,6 +16,16 @@ from project.server.main.logger import get_logger
 lid_model = fasttext.load_model('/src/project/server/main/lid.176.ftz')
 
 logger = get_logger(__name__)
+
+def read_jsonl(filepath):
+    with open(filepath, 'rb') as f:
+        return [orjson.loads(line) for line in f]
+
+def write_jsonl(data, filepath):
+    with open(filepath, 'wb') as f:
+        for obj in data:
+            f.write(orjson.dumps(obj))
+            f.write(b'\n')
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""

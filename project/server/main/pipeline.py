@@ -1,4 +1,5 @@
 import pandas as pd
+import json
 import os
 from project.server.main.harvester.test import process_publication
 from project.server.main.grobid import parse_grobid
@@ -13,7 +14,8 @@ from project.server.main.utils import (
     get_filename,
     get_lang,
     is_dowloaded,
-    has_acknowledgement
+    has_acknowledgement,
+    read_jsonl
 )
 from project.server.main.mongo import get_oa
 from project.server.main.logger import get_logger
@@ -37,7 +39,10 @@ def enrich_with_metadata(df):
 def test():
     input_file = '/src/validation/validation_from_florian_naudet_constant_vinatier.csv'
     df = pd.read_csv(input_file)
-    elts = df.to_dict(orient='records')[0:1]
+    elts = df.to_dict(orient='records')
+    paragraphs = parse_paragraphs(elts=elts, use_cache=True, use_llm=True)
+    return paragraphs
+
 
 def get_from_live_unpaywall(doi):
     url = f'https://api.unpaywall.org/v2/{doi}?email=unpaywall_01@example.com'
@@ -59,8 +64,8 @@ def validation():
 def run_from_file(input_file, args, worker_idx):
     download = args.get('download', False)
     parse = args.get('parse', False)
-    detect = args.get('detect', False)
-    analyze = args.get('analyze', False) # LLM
+    use_cache = args.get('use_cache', True)
+    use_llm = args.get('use_llm', False)
     chunksize = args.get('chunksize', 100)
     early_stop = args.get('early_stop', False)
     if ('jsonl' in input_file) or ('chunk_bso' in input_file):
@@ -77,13 +82,7 @@ def run_from_file(input_file, args, worker_idx):
         if download:
             download_and_grobid(elts, worker_idx)
         if parse:
-            paragraphs = parse_paragraphs(elts)
-        if paragraphs and detect:
-            filtered_paragraphs = detect_acknowledgement(paragraphs)
-        if filtered_paragraphs and analyze:
-            for p in filtered_paragraphs:
-                get_mistral_answer(p)
-        #    detections = analyze_acknowledgement(filtered_paragraphs)
+            paragraphs = parse_paragraphs(elts, use_cache, use_llm)
         if early_stop:
             break
 
@@ -99,9 +98,10 @@ def download_and_grobid(elts, worker_idx):
     logger.debug(f'{len(xml_paths)} xmls extracted')
     return 
 
-def parse_paragraphs(elts):
+def parse_paragraphs(elts, use_cache=True, use_llm = True):
     paragraphs = []
     xml_paths = []
+    logger.debug(f'start going through paths for {len(elts)} elts')
     for elt in elts:
         elt_id = get_elt_id(elt)
         xml_path = get_filename(elt_id, 'grobid')
@@ -112,16 +112,33 @@ def parse_paragraphs(elts):
             if os.path.isfile(xml_path):
                 xml_paths.append(xml_path)
     logger.debug(f'{len(xml_paths)} / {len(elts)} files have an XML')
-    nb_already_analyzed = 0
+    new_parsing, llm_call = 0, 0
+    already_parsed, already_llm = 0, 0
+    llm_res = []
     for xml_path in xml_paths:
         uid = xml_path.split('/')[-1].split('.')[0]
         elt_id = id_to_string(uid)
         PARAGRAPH_TYPE = 'ACKNOWLEDGEMENT'
-        filename_detection = get_filename(elt_id, PARAGRAPH_TYPE, 'filter')
-        if os.path.isfile(filename_detection):
-            nb_already_analyzed += 1
-        else:
-            paragraphs += parse_grobid(xml_path, elt_id)
-    logger.debug(f'{len(paragraphs)} new paragraphs extracted')
-    logger.debug(f'{nb_already_analyzed} xmls already analyzed for {PARAGRAPH_TYPE}')
-    return paragraphs
+        filename_paragraph = get_filename(elt_id, PARAGRAPH_TYPE, 'filter')
+        filename_llm = get_filename(elt_id, PARAGRAPH_TYPE, 'llm')
+        is_parsed, is_analyzed = False, False
+        if use_cache and os.path.isfile(filename_paragraph):
+            already_parsed += 1
+            is_parsed = True
+        if use_cache and os.path.isfile(filename_llm):
+            already_llm += 1
+            is_analyzed = True
+        if (use_cache is False) or (is_parsed is False):
+            new_parsing += 1
+            paragraphs = parse_grobid(xml_path, elt_id)
+            detect_acknowledgement(paragraphs)
+        if use_llm:
+            if (use_cache is False) or (is_analyzed is False):
+                llm_call += 1
+                llm_res += get_mistral_answer(filename_paragraph)
+            else:
+                p_llm = read_jsonl(filename_llm)
+                llm_res += p_llm
+    logger.debug(f'already_parsed: {already_parsed}, already_llm: {already_llm}')
+    logger.debug(f'new parsed: {new_parsing}, LLM calls: {llm_call}')
+    return llm_res
