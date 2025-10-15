@@ -55,8 +55,7 @@ def detect_acknowledgement(paragraphs):
     logger.debug(f'{len(filtered_paragraphs)} paragraphs kept after first {PARAGRAPH_TYPE} detection step - Max length = {max_paragraph_len}')
     for publi_id in publi_id_map:
         filename = get_filename(publi_id, PARAGRAPH_TYPE, 'filter')
-        df_tmp = pd.DataFrame(publi_id_map[publi_id])
-        df_tmp.to_json(filename, orient='records', lines=True)
+        write_jsonl(publi_id_map[publi_id], filename)
     return filtered_paragraphs
 
 def analyze_acknowledgement(filtered_paragraphs): # NOT USED
@@ -82,12 +81,14 @@ def analyze_acknowledgement(filtered_paragraphs): # NOT USED
     return filtered_paragraphs
 
 
-def get_mistral_answer(filename_paragraph):
+def get_mistral_answer(publication_id):
+    filename_paragraph = get_filename(publication_id, PARAGRAPH_TYPE, 'filter')
     paragraphs, analyzed_all = [], []
     try:
         paragraphs = read_jsonl(filename_paragraph)
     except:
         logger.debug(f'error loading filename_paragraph {filename_paragraph}')
+        os.system(f'rm -rf {filename_paragraph}')
         return {}
     for p in paragraphs:
         messages = [{'role': 'user', 'content': p['text']}]
@@ -107,7 +108,7 @@ def get_mistral_answer(filename_paragraph):
             logger.debug(f'error in response from LLM : {r.text}')
             logger.debug(f"input was {p['text']}")
             continue
-    filename = get_filename(p['publication_id'], PARAGRAPH_TYPE, 'llm')
+    filename = get_filename(publication_id, PARAGRAPH_TYPE, 'llm')
     write_jsonl(analyzed_all, filename)
     return analyzed_all
 

@@ -135,7 +135,7 @@ def parse_paragraphs(elts, use_cache=True, use_llm = True):
         if use_llm:
             if (use_cache is False) or (is_analyzed is False):
                 llm_call += 1
-                llm_res += get_mistral_answer(filename_paragraph)
+                llm_res += get_mistral_answer(elt_id)
             else:
                 p_llm = read_jsonl(filename_llm)
                 llm_res += p_llm
