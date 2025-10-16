@@ -31,7 +31,7 @@ try:
 except:
     logger.debug(f'instantiating SPRINGER client with ip {current_ip} FAILED')
 
-def process_entry(elt, worker_idx = 1):
+def process_entry(elt, worker_idx = 1, already_done = set()):
     global wiley_client, elsevier_client, springer_client
     result = FAIL_DOWNLOAD
     elt_id = get_elt_id(elt)

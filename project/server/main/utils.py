@@ -17,6 +17,17 @@ lid_model = fasttext.load_model('/src/project/server/main/lid.176.ftz')
 
 logger = get_logger(__name__)
 
+def get_bso_data(year):
+    bso_file = f'bso-publications-latest_split_{year}_enriched.jsonl.gz'
+    url = f'https://storage.gra.cloud.ovh.net/v1/AUTH_32c5d10cb0fe4519b957064a111717e3/bso_dump/{bso_file}'
+    download_file(url, f'/data/{bso_file}')
+    split_bso_data(f'{bso_file}')
+
+def split_bso_data(bso_file):
+    logger.debug(f'splitting bso file in chunk of len 70 000 ; expect 5 files outputs')
+    os.system(f'mkdir -p /data/bso_chunks && cd /data/bso_chunks && rm -rf chunk*')
+    os.system(f'cd /data && zcat {bso_file} | split -l 70000 - chunk_bso_ && mv chunk_bso* bso_chunks/.')
+
 def read_jsonl(filepath):
     with open(filepath, 'rb') as f:
         return [orjson.loads(line) for line in f]
@@ -117,17 +128,6 @@ def inference_app_stop(PARAGRAPH_TYPE: str):
         return
     ovhai_app_stop(inference_app_get_id(PARAGRAPH_TYPE))
     time.sleep(10)
-
-
-def get_bso_data():
-    url = 'https://storage.gra.cloud.ovh.net/v1/AUTH_32c5d10cb0fe4519b957064a111717e3/bso_dump/bso-publications-latest.jsonl.gz'
-    download_file(url, '/data/bso-publications-latest.jsonl.gz')
-    split_bso_data()
-
-def split_bso_data():
-    logger.debug(f'splitting bso file in chunk of len 800 000 ; expect 5 files outputs')
-    os.system('mkdir -p /data/bso_chunks && cd /data/bso_chunks && rm -rf chunk*')
-    os.system(f'cd /data && zcat bso-publications-latest.jsonl.gz | split -l 800000 - chunk_bso_ && mv chunk_bso* bso_chunks/.')
 
 def get_models(PARAGRAPH_TYPE):
     model_path = f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz'

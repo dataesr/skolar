@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import os
+import pickle
 from project.server.main.harvester.test import process_publication
 from project.server.main.grobid import parse_grobid
 from project.server.main.inference.acknowledgement import detect_acknowledgement, analyze_acknowledgement, get_mistral_answer
@@ -21,6 +22,22 @@ from project.server.main.mongo import get_oa
 from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
+
+def get_already_done(input_dir, reset=True):
+    assert(input_dir in ['grobid', 'publisher-xml'])
+    cache_filename = f'/data/already_done_{input_dir}.pkl'
+    if reset is False:
+        done = pickle.load(open(cache_filename, 'rb'))
+        logger.debug(f'{len(done)} files already done for {input_dir}')
+        return done
+    done = []
+    for e in os.walk(f'/data/{input_dir}'):
+        if e[2]:
+            done += e[2]
+    done = set(done)
+    logger.debug(f'recomputed: {len(done)} files already done for {input_dir}')
+    pickle.dump(done, open(cache_filename, 'wb'))
+    return done
 
 def enrich_with_metadata(df):
     df['doi'] = df['doi'].apply(lambda x:x.lower().strip())
@@ -62,6 +79,7 @@ def validation():
     pd.DataFrame(data).to_csv('/data/validation.csv', index=False)
 
 def run_from_file(input_file, args, worker_idx):
+    done_grobid = get_already_done('grobid')
     download = args.get('download', False)
     parse = args.get('parse', False)
     use_cache = args.get('use_cache', True)
@@ -86,10 +104,10 @@ def run_from_file(input_file, args, worker_idx):
         if early_stop:
             break
 
-def download_and_grobid(elts, worker_idx):
+def download_and_grobid(elts, worker_idx, already_done):
     xml_paths = []
     for elt in elts:
-        xml_path = process_publication(elt, worker_idx) # download + run_grobid
+        xml_path = process_publication(elt, worker_idx, already_done) # download + run_grobid
         if xml_path:
             xml_paths.append(xml_path)
     gzip_all_files_in_dir(f'/data/pdf_{worker_idx}')

@@ -54,15 +54,14 @@ def run_train():
 @main_blueprint.route("/process_bso", methods=["POST"])
 def run_process_bso():
     args = request.get_json(force=True)
-    # get_bso_data()
-    logger.debug(f'splitting bso file in chunk of len 800 000 ; expect 5 files outputs')
-    # split_bso_data()
+    year = args.get('year')
+    get_bso_data(year)
     worker_idx = 1
-    if args.get('analyze'):
-        inference_app_run('ACKNOWLEDGEMENT')
+    #if args.get('analyze'):
+    #    inference_app_run('ACKNOWLEDGEMENT')
     for f in os.listdir('/data/bso_chunks'):
         if f.startswith('chunk_bso'):
-            assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae'])
+            assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae', 'chunk_bso_af', 'chunk_bso_ag', 'chunk_bso_ah', 'chunk_bso_ai', 'chunk_bso_aj'])
             with Connection(redis.from_url(current_app.config["REDIS_URL"])):
                 q = Queue(name="skolar", default_timeout=default_timeout)
                 task = q.enqueue(run_from_file, f'/data/bso_chunks/{f}', args, worker_idx)
