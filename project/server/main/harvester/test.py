@@ -38,9 +38,14 @@ def process_entry(elt, worker_idx = 1, already_done = set()):
     elt['id'] = elt_id
     filename = get_filename(elt_id, f'pdf_{worker_idx}')
     filename_xml = get_filename(elt_id, 'grobid')
+    filename_xml_publisher = get_filename(elt_id, 'publisher-xml')
     if os.path.isfile(filename_xml):
         logger.debug(f'already downloaded / grobidified {filename} for {elt_id}')
         return
+    if os.path.isfile(filename_xml_publisher):
+        logger.debug(f'already downloaded xml {filename} for {elt_id}')
+        return
+    publisher = None
     publisher = None
     if isinstance(elt.get('publisher_normalized'), str):
         publisher = elt['publisher_normalized']
@@ -54,7 +59,7 @@ def process_entry(elt, worker_idx = 1, already_done = set()):
         if elsevier_client and 'elsevier' in publisher.lower():
             result, _ = publisher_api_download(doi, filename, elsevier_client)
         if springer_client and 'springer' in publisher.lower():
-            result, _ = publisher_api_download(doi, filename, springer_client)
+            result, _ = publisher_api_download(doi, filename_xml_publisher, springer_client)
     if result == SUCCESS_DOWNLOAD:
         return
     oa_locations = []

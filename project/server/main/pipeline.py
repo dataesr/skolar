@@ -79,7 +79,7 @@ def validation():
     pd.DataFrame(data).to_csv('/data/validation.csv', index=False)
 
 def run_from_file(input_file, args, worker_idx):
-    done_grobid = get_already_done('grobid')
+    #done_grobid = get_already_done('grobid')
     download = args.get('download', False)
     parse = args.get('parse', False)
     use_cache = args.get('use_cache', True)
@@ -90,7 +90,10 @@ def run_from_file(input_file, args, worker_idx):
         df = pd.read_json(input_file, lines=True, chunksize=chunksize)
     elif 'csv' in input_file:
         df = pd.read_csv(input_file, chunksize=chunksize)
+    chunk_idx = 0
     for c in df:
+        chunk_idx += 1
+        logger.debug(f'NEW CHUNK {chunk_idx}')
         cols = list(c.columns)
         elts, paragraphs, filtered_paragraphs = [], [], []
         if ('oa_details' not in cols) and ('oa_locations' not in cols):
@@ -104,7 +107,7 @@ def run_from_file(input_file, args, worker_idx):
         if early_stop:
             break
 
-def download_and_grobid(elts, worker_idx, already_done):
+def download_and_grobid(elts, worker_idx, already_done = set()):
     xml_paths = []
     for elt in elts:
         xml_path = process_publication(elt, worker_idx, already_done) # download + run_grobid

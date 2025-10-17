@@ -77,7 +77,7 @@ class BaseAPIClient(AbstractAPIClient):
             if response.text[:5] == "%PDF-":
                 write_to_file(response.content, filepath)
                 logger.debug(
-                    f"The publication with doi = {doi} was successfully downloaded via {self.name} request"
+                    f"The publication with doi = {doi} was successfully downloaded via {self.name} request and saved to {filepath}"
                 )
 
             else:
