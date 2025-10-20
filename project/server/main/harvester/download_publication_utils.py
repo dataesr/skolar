@@ -123,7 +123,7 @@ def standard_download(url: str, filename: str, p_id: str) -> Tuple[str, str]:
     if not content:
         logger.debug(f'The publication with id = {p_id} download failed via standard request. File content is empty')
         return '', STANDARD_HARVESTER
-    logger.debug(f'The publication with id = {p_id} was successfully downloaded via standard request')
+    logger.debug(f'The publication with id = {p_id} was successfully downloaded via standard request from {url} into {filename}')
     with open(filename, 'wb') as f_out:
         f_out.write(content)
     result, harvester_used = SUCCESS_DOWNLOAD, STANDARD_HARVESTER

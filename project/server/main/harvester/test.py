@@ -43,7 +43,7 @@ def process_entry(elt, worker_idx = 1, already_done = set()):
         logger.debug(f'already downloaded / grobidified {filename} for {elt_id}')
         return
     if os.path.isfile(filename_xml_publisher):
-        logger.debug(f'already downloaded xml {filename} for {elt_id}')
+        logger.debug(f'already downloaded xml {filename_xml_publisher} for {elt_id}')
         return
     publisher = None
     publisher = None

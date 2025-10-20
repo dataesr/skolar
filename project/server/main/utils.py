@@ -25,8 +25,8 @@ def get_bso_data(year):
 
 def split_bso_data(bso_file, year):
     logger.debug(f'splitting bso file in chunk of len 70 000 ; expect 5 files outputs')
-    os.system(f'mkdir -p /data/bso_chunks && cd /data/bso_chunks && rm -rf chunk*')
-    os.system(f'cd /data && zcat {bso_file} | split -l 70000 - chunk_bso_{year}_ && mv chunk_bso* bso_chunks/.')
+    os.system(f'mkdir -p /data/bso_chunks && cd /data/bso_chunks && rm -rf chunk_bso_{year}_*')
+    os.system(f'cd /data && zcat {bso_file} | split -l 70000 - chunk_bso_{year}_ && mv chunk_bso_{year}_* bso_chunks/.')
 
 def read_jsonl(filepath):
     with open(filepath, 'rb') as f:

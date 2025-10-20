@@ -79,6 +79,7 @@ def validation():
     pd.DataFrame(data).to_csv('/data/validation.csv', index=False)
 
 def run_from_file(input_file, args, worker_idx):
+    os.system(f'mkdir -p /data/pdf_{worker_idx}')
     #done_grobid = get_already_done('grobid')
     download = args.get('download', False)
     parse = args.get('parse', False)
