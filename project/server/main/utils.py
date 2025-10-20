@@ -21,12 +21,12 @@ def get_bso_data(year):
     bso_file = f'bso-publications-latest_split_{year}_enriched.jsonl.gz'
     url = f'https://storage.gra.cloud.ovh.net/v1/AUTH_32c5d10cb0fe4519b957064a111717e3/bso_dump/{bso_file}'
     download_file(url, f'/data/{bso_file}')
-    split_bso_data(f'{bso_file}')
+    split_bso_data(f'{bso_file}', year)
 
-def split_bso_data(bso_file):
+def split_bso_data(bso_file, year):
     logger.debug(f'splitting bso file in chunk of len 70 000 ; expect 5 files outputs')
     os.system(f'mkdir -p /data/bso_chunks && cd /data/bso_chunks && rm -rf chunk*')
-    os.system(f'cd /data && zcat {bso_file} | split -l 70000 - chunk_bso_ && mv chunk_bso* bso_chunks/.')
+    os.system(f'cd /data && zcat {bso_file} | split -l 70000 - chunk_bso_{year}_ && mv chunk_bso* bso_chunks/.')
 
 def read_jsonl(filepath):
     with open(filepath, 'rb') as f:

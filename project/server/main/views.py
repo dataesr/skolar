@@ -61,7 +61,7 @@ def run_process_bso():
     #    inference_app_run('ACKNOWLEDGEMENT')
     for f in os.listdir('/data/bso_chunks'):
         if f.startswith('chunk_bso'):
-            assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae', 'chunk_bso_af', 'chunk_bso_ag', 'chunk_bso_ah', 'chunk_bso_ai', 'chunk_bso_aj'])
+            #assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae', 'chunk_bso_af', 'chunk_bso_ag', 'chunk_bso_ah', 'chunk_bso_ai', 'chunk_bso_aj'])
             with Connection(redis.from_url(current_app.config["REDIS_URL"])):
                 q = Queue(name="skolar", default_timeout=default_timeout)
                 task = q.enqueue(run_from_file, f'/data/bso_chunks/{f}', args, worker_idx)
