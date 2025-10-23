@@ -111,6 +111,9 @@ def run_from_file(input_file, args, worker_idx):
 def download_and_grobid(elts, worker_idx, already_done = set()):
     xml_paths = []
     for elt in elts:
+        if elt.get('hal_docType') in ['VIDEO', 'video']:
+            logger.debug(f"skip video {elt['id']}")
+            continue
         xml_path = process_publication(elt, worker_idx, already_done) # download + run_grobid
         if xml_path:
             xml_paths.append(xml_path)
