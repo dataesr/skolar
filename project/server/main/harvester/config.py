@@ -38,7 +38,7 @@ config["SPRINGER"] = {
         "API_TOKEN": os.getenv("SPRINGER_API_TOKEN"),
         "health_check_doi": "10.1007/s12549-017-0308-x",
         "throttle_parameters": {
-            "max_num_requests": 450,
-            "window_size": 86400
+            "max_num_requests": 1,
+            "window_size": 1
         }
         }
