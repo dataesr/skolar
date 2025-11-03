@@ -52,6 +52,7 @@ def process_entry(elt, worker_idx = 1, already_done = set()):
     elif isinstance(elt.get('publisher'), str):
         publisher = elt['publisher']
     urls_to_test = []
+    logger.debug(f"try to download {elt['id']}")
     doi = elt.get('doi')
     if doi and isinstance(doi, str):
         if wiley_client and 'wiley' in publisher.lower():
