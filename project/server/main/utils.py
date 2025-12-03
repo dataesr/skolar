@@ -9,6 +9,7 @@ import base64
 import time
 import fasttext
 import orjson
+import json
 from huggingface_hub import hf_hub_download
 from project.server.main.ovhai import ovhai_app_get_data, ovhai_app_start, ovhai_app_stop
 from project.server.main.logger import get_logger
@@ -16,6 +17,26 @@ from project.server.main.logger import get_logger
 lid_model = fasttext.load_model('/src/project/server/main/lid.176.ftz')
 
 logger = get_logger(__name__)
+
+def clean_json(elt):
+    keys = list(elt.keys()).copy()
+    for f in keys:
+        if isinstance(elt[f], dict):
+            elt[f] = clean_json(elt[f])
+        elif (not elt[f] == elt[f]) or (elt[f] is None):
+            del elt[f]
+        elif (isinstance(elt[f], str) and len(elt[f])==0):
+            del elt[f]
+        elif (isinstance(elt[f], list) and len(elt[f])==0):
+            del elt[f]
+    return elt
+
+def to_jsonl(input_list, output_file, mode = 'a'):
+    with open(output_file, mode) as outfile:
+        for entry in input_list:
+            new = clean_json(entry)
+            json.dump(new, outfile)
+            outfile.write('\n')
 
 def get_bso_data(year):
     bso_file = f'bso-publications-latest_split_{year}_enriched.jsonl.gz'

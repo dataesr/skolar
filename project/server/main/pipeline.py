@@ -1,5 +1,6 @@
 import pandas as pd
 import json
+import pymongo
 import os
 import pickle
 from project.server.main.harvester.test import process_publication
@@ -16,7 +17,8 @@ from project.server.main.utils import (
     get_lang,
     is_dowloaded,
     has_acknowledgement,
-    read_jsonl
+    read_jsonl,
+    to_jsonl
 )
 from project.server.main.mongo import get_oa
 from project.server.main.logger import get_logger
@@ -85,6 +87,7 @@ def run_from_file(input_file, args, worker_idx):
     parse = args.get('parse', False)
     use_cache = args.get('use_cache', True)
     use_llm = args.get('use_llm', False)
+    concat = args.get('concat', False)
     chunksize = args.get('chunksize', 100)
     early_stop = args.get('early_stop', False)
     if ('jsonl' in input_file) or ('chunk_bso' in input_file):
@@ -92,6 +95,7 @@ def run_from_file(input_file, args, worker_idx):
     elif 'csv' in input_file:
         df = pd.read_csv(input_file, chunksize=chunksize)
     chunk_idx = 0
+    files_to_concat = []
     for c in df:
         chunk_idx += 1
         logger.debug(f'NEW CHUNK {chunk_idx}')
@@ -105,8 +109,27 @@ def run_from_file(input_file, args, worker_idx):
             download_and_grobid(elts, worker_idx)
         if parse:
             paragraphs = parse_paragraphs(elts, use_cache, use_llm)
+        if concat:
+            files_to_concat += concat_files(elts, 'ACKNOWLEDGEMENT')
         if early_stop:
             break
+    if concat and files_to_concat:
+        current_file = input_file.split('/')[-1].split('.')[0]
+        output_file = f'/data/acknowledgement/{current_file}.jsonl'
+        logger.debug(f'writing {len(files_to_concat)} elts into {output_file}')
+        to_jsonl(files_to_concat, f'{output_file}')
+
+def concat_files(elts, PARAGRAPH_TYPE = 'ACKNOWLEDGEMENT'):
+    all_data = []
+    for elt in elts:
+        filename = get_filename(elt['id'], PARAGRAPH_TYPE, 'llm')
+        try:
+            current_data = pd.read_json(filename, lines=True).to_dict(orient='records')
+            all_data += current_data
+        except:
+            pass
+    logger.debug(f'{len(all_data)} publis with ack data collected in the chunk')
+    return all_data
 
 def download_and_grobid(elts, worker_idx, already_done = set()):
     xml_paths = []
@@ -159,11 +182,30 @@ def parse_paragraphs(elts, use_cache=True, use_llm = True):
             detect_acknowledgement(paragraphs)
         if use_llm:
             if (use_cache is False) or (is_analyzed is False):
-                llm_call += 1
-                llm_res += get_mistral_answer(elt_id)
+                try:
+                    llm_res += get_mistral_answer(elt_id)
+                    llm_call += 1
+                except:
+                    logger.debug(f'error for {elt_id}')
             else:
                 p_llm = read_jsonl(filename_llm)
                 llm_res += p_llm
     logger.debug(f'already_parsed: {already_parsed}, already_llm: {already_llm}')
     logger.debug(f'new parsed: {new_parsing}, LLM calls: {llm_call}')
     return llm_res
+
+
+def import_acknowledgments():
+    myclient = pymongo.MongoClient('mongodb://mongo:27017/')
+    mydb = myclient['scanr']
+    collection_name = 'acknowledgments_v2'
+    mydb[collection_name].drop()
+    for f in os.listdir('/data/acknowledgement'):
+        current_file = f'/data/acknowledgement/{f}'
+        mongoimport = f'mongoimport --numInsertionWorkers 2 --uri mongodb://mongo:27017/scanr --file {current_file}' \
+                  f' --collection {collection_name}'
+        os.system(mongoimport)
+    mycol = mydb[collection_name]
+    for f in ['publication_id']:
+        mycol.create_index(f)
+    myclient.close()

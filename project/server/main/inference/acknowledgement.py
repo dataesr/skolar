@@ -5,6 +5,7 @@ import json
 import fasttext
 import requests
 import pandas as pd
+from retry import retry
 from project.server.main.paragraphs.acknowledgement import is_acknowledgement
 from project.server.main.inference.generate import generate_pipeline
 from project.server.main.utils import download_file, clean_dir, get_models, inference_app_run, get_filename, read_jsonl, write_jsonl
@@ -81,6 +82,7 @@ def analyze_acknowledgement(filtered_paragraphs): # NOT USED
     return filtered_paragraphs
 
 
+@retry(delay=30, tries=2, logger=logger)
 def get_mistral_answer(publication_id):
     filename_paragraph = get_filename(publication_id, PARAGRAPH_TYPE, 'filter')
     paragraphs, analyzed_all = [], []
