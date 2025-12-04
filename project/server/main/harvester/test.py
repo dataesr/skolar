@@ -31,7 +31,7 @@ try:
 except:
     logger.debug(f'instantiating SPRINGER client with ip {current_ip} FAILED')
 
-def process_entry(elt, worker_idx = 1, already_done = set()):
+def process_entry(elt, worker_idx = 1, use_cache=True):
     global wiley_client, elsevier_client, springer_client
     result = FAIL_DOWNLOAD
     elt_id = get_elt_id(elt)
@@ -39,10 +39,10 @@ def process_entry(elt, worker_idx = 1, already_done = set()):
     filename = get_filename(elt_id, f'pdf_{worker_idx}')
     filename_xml = get_filename(elt_id, 'grobid')
     filename_xml_publisher = get_filename(elt_id, 'publisher-xml')
-    if os.path.isfile(filename_xml):
-        logger.debug(f'already downloaded / grobidified {filename} for {elt_id}')
+    if use_cache and os.path.isfile(filename_xml):
+        logger.debug(f'already downloaded and grobidified {filename} for {elt_id}')
         return
-    if os.path.isfile(filename_xml_publisher):
+    if use_cache and os.path.isfile(filename_xml_publisher):
         logger.debug(f'already downloaded xml {filename_xml_publisher} for {elt_id}')
         return
     publisher = None
@@ -107,10 +107,11 @@ def process_entry(elt, worker_idx = 1, already_done = set()):
         logger.debug('---')
     logger.debug(f'download failed for {elt_id}')
 
-def process_publication(elt, worker_idx = 1, do_grobid = True):
+def process_publication(elt, worker_idx = 1, use_cache = True):
     #elt = requests.get(f'https://api.unpaywall.org/v2/{doi}?email=unpaywall_01@example.com').json()
-    process_entry(elt, worker_idx)
+    process_entry(elt=elt, worker_idx=worker_idx, use_cache=use_cache)
     elt_id = elt['id']
     pdf_file = get_filename(elt_id, f'pdf_{worker_idx}')
+    do_grobid = True
     if do_grobid and os.path.isfile(pdf_file):
-        return run_grobid(pdf_file, get_filename(elt_id, 'grobid'))
+        return run_grobid(pdf_file = pdf_file, output_file = get_filename(elt_id, 'grobid'), use_cache = use_cache)

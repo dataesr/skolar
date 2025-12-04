@@ -13,10 +13,10 @@ TYPES = ['introduction', 'method', 'result', 'conclusion', 'acknowledgement', 'f
 MIN_WORD_LENGTH = 4
 MIN_NB_WORS = 10
 
-def run_grobid(pdf_file, output_file):
+def run_grobid(pdf_file, output_file, use_cache):
     assert(os.path.isfile(pdf_file))
-    if os.path.isfile(output_file):
-        print(f'already done {output_file}')
+    if use_cache and os.path.isfile(output_file):
+        logger.debug(f'already done {output_file}')
         return output_file
     grobid_url = 'http://grobid:8070/api/processFulltextDocument'
     file_handle =  open(pdf_file, 'rb')

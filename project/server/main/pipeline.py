@@ -25,21 +25,32 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
-def get_already_done(input_dir, reset=True):
-    assert(input_dir in ['grobid', 'publisher-xml'])
-    cache_filename = f'/data/already_done_{input_dir}.pkl'
-    if reset is False:
-        done = pickle.load(open(cache_filename, 'rb'))
-        logger.debug(f'{len(done)} files already done for {input_dir}')
-        return done
-    done = []
-    for e in os.walk(f'/data/{input_dir}'):
-        if e[2]:
-            done += e[2]
-    done = set(done)
-    logger.debug(f'recomputed: {len(done)} files already done for {input_dir}')
-    pickle.dump(done, open(cache_filename, 'wb'))
-    return done
+def get_already_computed():
+    all_ids = set()
+    for f in os.listdir('/data/acknowledgement'):
+        logger.debug(f)
+        df = pd.read_json(f'/data/acknowledgement/{f}', lines=True)
+        all_ids.update(df.publication_id.to_list())
+    logger.debug(f'{len(all_ids)} ids already ok')
+    pickle.dump(all_ids, open('/data/computed_ids.pkl', 'wb'))
+
+ALREADY_COMPUTED_IDS = pickle.load(open('/data/computed_ids.pkl', 'rb'))
+
+#def get_already_done(input_dir, reset=True):
+#    assert(input_dir in ['grobid', 'publisher-xml'])
+#    cache_filename = f'/data/already_done_{input_dir}.pkl'
+#    if reset is False:
+#        done = pickle.load(open(cache_filename, 'rb'))
+#        logger.debug(f'{len(done)} files already done for {input_dir}')
+#        return done
+#    done = []
+#    for e in os.walk(f'/data/{input_dir}'):
+#        if e[2]:
+#            done += e[2]
+#    done = set(done)
+#    logger.debug(f'recomputed: {len(done)} files already done for {input_dir}')
+#    pickle.dump(done, open(cache_filename, 'wb'))
+#    return done
 
 def enrich_with_metadata(df):
     df['doi'] = df['doi'].apply(lambda x:x.lower().strip())
@@ -80,9 +91,16 @@ def validation():
         data.append(e)
     pd.DataFrame(data).to_csv('/data/validation.csv', index=False)
 
+def run_list_publi(publi_ids, use_cache):
+    c = pd.DataFrame({'id': publi_ids})
+    c['doi'] = c['id'].apply(lambda x:x.replace('doi10', '10'))
+    elts = enrich_with_metadata(c)
+    download_and_grobid(elts, 1, use_cache)
+    parse_paragraphs(elts, use_cache=use_cache, use_llm=True)
+    #filename = get_filename(elts[0]['id'], 'ACKNOWLEDGEMENT', 'llm')
+
 def run_from_file(input_file, args, worker_idx):
     os.system(f'mkdir -p /data/pdf_{worker_idx}')
-    #done_grobid = get_already_done('grobid')
     download = args.get('download', False)
     parse = args.get('parse', False)
     use_cache = args.get('use_cache', True)
@@ -105,8 +123,11 @@ def run_from_file(input_file, args, worker_idx):
             elts = enrich_with_metadata(c)
         else:
             elts = c.to_dict(orient='records')
+        logger.debug(f'len elts = {len(elts)}')
+        elts = [e for e in elts if e['id'] not in ALREADY_COMPUTED_IDS]
+        logger.debug(f'len elts = {len(elts)} after removing ALREADY_COMPUTED_IDS')
         if download:
-            download_and_grobid(elts, worker_idx)
+            download_and_grobid(elts, worker_idx, use_cache)
         if parse:
             paragraphs = parse_paragraphs(elts, use_cache, use_llm)
         if concat:
@@ -131,13 +152,13 @@ def concat_files(elts, PARAGRAPH_TYPE = 'ACKNOWLEDGEMENT'):
     logger.debug(f'{len(all_data)} publis with ack data collected in the chunk')
     return all_data
 
-def download_and_grobid(elts, worker_idx, already_done = set()):
+def download_and_grobid(elts, worker_idx, use_cache=True):
     xml_paths = []
     for elt in elts:
         if elt.get('hal_docType') in ['VIDEO', 'video']:
             logger.debug(f"skip video {elt['id']}")
             continue
-        xml_path = process_publication(elt, worker_idx, already_done) # download + run_grobid
+        xml_path = process_publication(elt = elt, worker_idx = worker_idx, use_cache = use_cache) # download + run_grobid
         if xml_path:
             xml_paths.append(xml_path)
     gzip_all_files_in_dir(f'/data/pdf_{worker_idx}')
