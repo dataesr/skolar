@@ -124,8 +124,9 @@ def run_from_file(input_file, args, worker_idx):
         else:
             elts = c.to_dict(orient='records')
         logger.debug(f'len elts = {len(elts)}')
-        elts = [e for e in elts if e['id'] not in ALREADY_COMPUTED_IDS]
-        logger.debug(f'len elts = {len(elts)} after removing ALREADY_COMPUTED_IDS')
+        if download or parse:
+            elts = [e for e in elts if e['id'] not in ALREADY_COMPUTED_IDS]
+            logger.debug(f'len elts = {len(elts)} after removing ALREADY_COMPUTED_IDS')
         if download:
             download_and_grobid(elts, worker_idx, use_cache)
         if parse:
@@ -134,11 +135,13 @@ def run_from_file(input_file, args, worker_idx):
             files_to_concat += concat_files(elts, 'ACKNOWLEDGEMENT')
         if early_stop:
             break
-    if concat and files_to_concat:
+    if concat:
         current_file = input_file.split('/')[-1].split('.')[0]
         output_file = f'/data/acknowledgement/{current_file}.jsonl'
+        os.system(f'rm -rf {output_file}')
         logger.debug(f'writing {len(files_to_concat)} elts into {output_file}')
-        to_jsonl(files_to_concat, f'{output_file}')
+        if files_to_concat:
+            to_jsonl(files_to_concat, f'{output_file}')
 
 def concat_files(elts, PARAGRAPH_TYPE = 'ACKNOWLEDGEMENT'):
     all_data = []

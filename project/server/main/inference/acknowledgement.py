@@ -22,7 +22,7 @@ def infere_is_acknowledgement(paragraph, fasttext_model):
     txt = paragraph['text']
     prediction = fasttext_model.predict(txt)
     proba = prediction[1][0]
-    if prediction[0][0] == f'label__is_{PARAGRAPH_TYPE}' and proba > 0.5:
+    if prediction[0][0] == f'__label__is_{PARAGRAPH_TYPE}' and proba > 0.5:
         return True
     return False
 

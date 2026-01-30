@@ -9,7 +9,7 @@ from project.server.main.pipeline import run_from_file
 from project.server.main.logger import get_logger
 from project.server.main.training.build_training import build_train_and_calibrate
 from project.server.main.training.hf import build_dataset, parse
-from project.server.main.utils import get_bso_data, inference_app_run, inference_app_stop
+from project.server.main.utils import get_bso_data, inference_app_run, inference_app_stop, sync_all
 
 default_timeout = 4320000
 
@@ -48,6 +48,15 @@ def run_train():
     with Connection(redis.from_url(current_app.config["REDIS_URL"])):
         q = Queue(name="skolar", default_timeout=default_timeout)
         task = q.enqueue(build_train_and_calibrate, args)
+    response_object = {"status": "success", "data": {"task_id": task.get_id()}}
+    return jsonify(response_object), 202
+
+@main_blueprint.route("/sync", methods=["POST"])
+def run_sync():
+    args = request.get_json(force=True)
+    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+        q = Queue(name="skolar", default_timeout=default_timeout)
+        task = q.enqueue(sync_all, args)
     response_object = {"status": "success", "data": {"task_id": task.get_id()}}
     return jsonify(response_object), 202
 

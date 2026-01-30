@@ -104,6 +104,16 @@ def cp_folder_local_s3(folder_local, folder_distant=None):
     logger.debug(f'cp_folder_local_s3 for {folder_local} to {folder_distant} cmd={cmd}')
     os.system(cmd)
 
+def sync_local_to_s3(folder_local, folder_distant=None):
+    if folder_distant is None:
+        folder_distant = folder_local
+    cmd = f'aws s3 sync /data/{folder_local} s3://skolar/{folder_distant}'
+    logger.debug(cmd)
+    os.system(cmd)
+
+def sync_all(args):
+    for k in ['llm', 'filter', 'grobid', 'publisher-xml']:
+        sync_local_to_s3(k)
 
 def inference_app_get_id(PARAGRAPH_TYPE: str) -> str:
     app_id = os.getenv(f"{PARAGRAPH_TYPE.upper()}_INFERENCE_APP_ID")
@@ -156,9 +166,9 @@ def get_models(PARAGRAPH_TYPE):
         download_file(f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz', f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.ftz')
         download_file(f'https://skolar.s3.eu-west-par.io.cloud.ovh.net/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.vec', f'/data/models/is_{PARAGRAPH_TYPE}/model_is_{PARAGRAPH_TYPE}_1M.vec')
     fasttext_model = fasttext.load_model(model_path)
-    INFERENCE_APP_DATA = ovhai_app_get_data(inference_app_get_id(PARAGRAPH_TYPE))
-    INFERENCE_APP_URL = f"{INFERENCE_APP_DATA.get('status', {}).get('url')}/generate"
-    return {"fasttext_model": fasttext_model, "inference_url": INFERENCE_APP_URL}
+    #INFERENCE_APP_DATA = ovhai_app_get_data(inference_app_get_id(PARAGRAPH_TYPE))
+    #INFERENCE_APP_URL = f"{INFERENCE_APP_DATA.get('status', {}).get('url')}/generate"
+    return {"fasttext_model": fasttext_model} #, "inference_url": INFERENCE_APP_URL}
 
 def string_to_id(s):
     # Encoder la chaîne en bytes, puis en base64
