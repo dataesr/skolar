@@ -41,7 +41,7 @@ def detect_acknowledgement(paragraphs):
         if publi_id not in publi_id_map:
             publi_id_map[publi_id] = []
         if paragraph['lang'] not in LANGS:
-            #logger.debug(f'skip paragraph {paragraph} because of lang')
+            # logger.debug(f'skip paragraph {paragraph} because of lang')
             continue
         if infere_is_acknowledgement(paragraph, models['fasttext_model']):
             if len(paragraph.get('text').split(' ')) < 10:
@@ -59,27 +59,27 @@ def detect_acknowledgement(paragraphs):
         write_jsonl(publi_id_map[publi_id], filename)
     return filtered_paragraphs
 
-def analyze_acknowledgement(filtered_paragraphs): # NOT USED
-    inference_app_run(PARAGRAPH_TYPE)
-    if len(filtered_paragraphs) == 0:
-        return filtered_paragraphs
-    llm_results = generate_pipeline([p["text"] for p in filtered_paragraphs], models["inference_url"])
-    if (len(llm_results) != len(filtered_paragraphs)):
-        logger.debug(f'ERROR getting {len(llm_results)} results but had {len(filtered_paragraphs)} inputs paragraphs')
-        assert(len(llm_results) != len(filtered_paragraphs))
-    publi_id_map = {}
-    for ix, p in enumerate(filtered_paragraphs):
-        p[f'llm_{PARAGRAPH_TYPE}'] = llm_results[ix]
-        publi_id = p['publication_id']
-        if publi_id not in publi_id_map:
-            publi_id_map[publi_id] = []
-        publi_id_map[publi_id].append(p)
-    for publi_id in publi_id_map:
-        filename = get_filename(publi_id, PARAGRAPH_TYPE, 'llm')
-        df_tmp = pd.DataFrame(publi_id_map[publi_id])
-        if len(df_tmp):
-            df_tmp.to_json(filename, orient='records', lines=True)
-    return filtered_paragraphs
+# def analyze_acknowledgement(filtered_paragraphs): # NOT USED
+#     inference_app_run(PARAGRAPH_TYPE)
+#     if len(filtered_paragraphs) == 0:
+#         return filtered_paragraphs
+#     llm_results = generate_pipeline([p["text"] for p in filtered_paragraphs], models["inference_url"])
+#     if (len(llm_results) != len(filtered_paragraphs)):
+#         logger.debug(f'ERROR getting {len(llm_results)} results but had {len(filtered_paragraphs)} inputs paragraphs')
+#         assert(len(llm_results) != len(filtered_paragraphs))
+#     publi_id_map = {}
+#     for ix, p in enumerate(filtered_paragraphs):
+#         p[f'llm_{PARAGRAPH_TYPE}'] = llm_results[ix]
+#         publi_id = p['publication_id']
+#         if publi_id not in publi_id_map:
+#             publi_id_map[publi_id] = []
+#         publi_id_map[publi_id].append(p)
+#     for publi_id in publi_id_map:
+#         filename = get_filename(publi_id, PARAGRAPH_TYPE, 'llm')
+#         df_tmp = pd.DataFrame(publi_id_map[publi_id])
+#         if len(df_tmp):
+#             df_tmp.to_json(filename, orient='records', lines=True)
+#     return filtered_paragraphs
 
 
 @retry(delay=30, tries=2, logger=logger)
