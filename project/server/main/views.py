@@ -9,7 +9,13 @@ from project.server.main.pipeline import run_from_file
 from project.server.main.logger import get_logger
 from project.server.main.training.build_training import build_train_and_calibrate
 from project.server.main.training.hf import build_dataset, parse
-from project.server.main.utils import get_bso_data, inference_app_run, inference_app_stop, sync_all
+from project.server.main.utils import (
+    get_bso_data,
+    inference_app_run,
+    inference_app_stop,
+    sync_all,
+    get_make_data_count_labels,
+)
 
 default_timeout = 4320000
 
@@ -27,7 +33,7 @@ def home():
 
 @main_blueprint.route("/stop", methods=["POST"])
 def run_stop():
-    inference_app_stop('ACKNOWLEDGEMENT')
+    inference_app_stop("acknowledgement")
     return jsonify({'res': 'ok'}), 202
 
 @main_blueprint.route("/hf", methods=["POST"])
@@ -66,16 +72,27 @@ def run_process_bso():
     year = args.get('year')
     get_bso_data(year)
     worker_idx = 1
-    #if args.get('analyze'):
-    #    inference_app_run('ACKNOWLEDGEMENT')
+    # if args.get('analyze'):
+    #    inference_app_run('acknowledgement')
     for f in os.listdir('/data/bso_chunks'):
         if f.startswith(f'chunk_bso_{year}'):
-            #assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae', 'chunk_bso_af', 'chunk_bso_ag', 'chunk_bso_ah', 'chunk_bso_ai', 'chunk_bso_aj'])
+            # assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae', 'chunk_bso_af', 'chunk_bso_ag', 'chunk_bso_ah', 'chunk_bso_ai', 'chunk_bso_aj'])
             with Connection(redis.from_url(current_app.config["REDIS_URL"])):
                 q = Queue(name="skolar", default_timeout=default_timeout)
                 task = q.enqueue(run_from_file, f'/data/bso_chunks/{f}', args, f'{year}_{worker_idx}')
                 worker_idx += 1
             response_object = {"status": "success", "data": {"task_id": task.get_id()}}
+    return jsonify(response_object), 202
+
+
+@main_blueprint.route("/process_make_data_count", methods=["POST"])
+def run_process_make_data_count():
+    args = request.get_json(force=True)
+    mdc_filename = get_make_data_count_labels()
+    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+        q = Queue(name="skolar", default_timeout=default_timeout)
+        task = q.enqueue(run_from_file, mdc_filename, args, 1)
+    response_object = {"status": "success", "data": {"task_id": task.get_id()}}
     return jsonify(response_object), 202
 
 

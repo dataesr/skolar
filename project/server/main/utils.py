@@ -38,6 +38,16 @@ def to_jsonl(input_list, output_file, mode = 'a'):
             json.dump(new, outfile)
             outfile.write('\n')
 
+
+def get_make_data_count_labels():
+    mdc_file = "make_data_count_labels_filtered.jsonl"
+    mdc_path = f"/data/{mdc_file}"
+    if not os.path.isfile(mdc_path):
+        url = f"https://skolar.s3.eu-west-par.io.cloud.ovh.net/datasets/{mdc_file}"
+        download_file(url, mdc_path)
+    return mdc_path
+
+
 def get_bso_data(year):
     bso_file = f'bso-publications-latest_split_{year}_enriched.jsonl.gz'
     url = f'https://storage.gra.cloud.ovh.net/v1/AUTH_32c5d10cb0fe4519b957064a111717e3/bso_dump/{bso_file}'

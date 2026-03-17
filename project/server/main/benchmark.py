@@ -1,9 +1,8 @@
 import pandas as pd
 from datasets import load_dataset
-from project.server.main.inference.acknowledgement import infere_is_acknowledgement
-from project.server.main.inference.dataset import infere_is_dataset
-from project.server.main.inference.software import infere_is_software
-from project.server.main.utils import get_models
+from project.server.main.paragraphs.acknowledgement.predict import is_acknowledgement
+from project.server.main.paragraphs.dataset.predict import is_dataset
+from project.server.main.paragraphs.software.predict import is_software
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
@@ -26,11 +25,8 @@ def bench_cdl():
                         elt.update({'doi': doi, 'id': 'doi'+doi, 'text': example['gt_das'].replace('\n', ' ')})
                 if len(elt)>1:
                     data.append(elt)
-    models = {}
-    for model_type in ['acknowledgement', 'dataset', 'software']:
-        models[model_type] = get_models(model_type)
     for elt in data:
-        elt[f'is_acknowledgement'] = infere_is_acknowledgement(elt, models['acknowledgement']['fasttext_model'])
-        elt[f'is_dataset'] = infere_is_dataset(elt, models['dataset']['fasttext_model'])
-        elt[f'is_software'] = infere_is_software(elt, models['software']['fasttext_model'])
+        elt["is_acknowledgement"] = is_acknowledgement(elt)
+        elt["is_dataset"] = is_dataset(elt)
+        elt["is_software"] = is_software(elt)
     return pd.DataFrame(data)

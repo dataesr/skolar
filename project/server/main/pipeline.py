@@ -5,8 +5,10 @@ import os
 import pickle
 from project.server.main.harvester.test import process_publication
 from project.server.main.grobid import parse_grobid
-from project.server.main.inference.acknowledgement import detect_acknowledgement, get_mistral_answer
-from project.server.main.inference.dataset import detect_dataset, llm_answer_dataset
+from project.server.main.paragraphs.acknowledgement.llm import acknowledgement_llm_completions
+from project.server.main.paragraphs.acknowledgement.filter import acknowledgement_filter
+from project.server.main.paragraphs.dataset.llm import dataset_llm_completions
+from project.server.main.paragraphs.dataset.filter import dataset_filter
 from project.server.main.utils import (
     id_to_string,
     cp_folder_local_s3,
@@ -34,13 +36,14 @@ def get_already_computed():
 
 ALREADY_COMPUTED_IDS = pickle.load(open('/data/computed_ids.pkl', 'rb'))
 
-FILTER_PARAGRAPHS = {
-    "ACKNOWLEDGEMENT": detect_acknowledgement,
-    "DATASET": filter_datasets,
+FILTER_FN = {
+    "acknowledgement": acknowledgement_filter,
+    "dataset": dataset_filter,
 }
-LLM_ANSWER_PARAGRAPH = {
-    "ACKNOWLEDGEMENT": get_mistral_answer,
-    "DATASET": llm_answer_dataset,
+
+LLM_COMPLETIONS_FN = {
+    "acknowledgement": acknowledgement_llm_completions,
+    "dataset": dataset_llm_completions,
 }
 
 # def get_already_done(input_dir, reset=True):
@@ -73,7 +76,8 @@ def enrich_with_metadata(df):
         new_data.append(e)
     return new_data
 
-def concat_files(elts, PARAGRAPH_TYPE = 'ACKNOWLEDGEMENT'):
+
+def concat_files(elts, PARAGRAPH_TYPE="acknowledgement"):
     all_data = []
     for elt in elts:
         filename = get_filename(elt['id'], PARAGRAPH_TYPE, 'llm')
@@ -84,6 +88,7 @@ def concat_files(elts, PARAGRAPH_TYPE = 'ACKNOWLEDGEMENT'):
             pass
     logger.debug(f'{len(all_data)} publis with ack data collected in the chunk')
     return all_data
+
 
 def download_and_grobid(elts, worker_idx, use_cache=True):
     xml_paths = []
@@ -100,11 +105,11 @@ def download_and_grobid(elts, worker_idx, use_cache=True):
     logger.debug(f'{len(xml_paths)} xmls extracted')
     return 
 
-
 def parse_paragraphs(elts, paragraph_type, use_cache=True, use_llm=True):
     paragraphs = []
     xml_paths = []
     logger.debug(f"{paragraph_type}: start going through paths for {len(elts)} elts")
+
     for elt in elts:
         elt_id = get_elt_id(elt)
         xml_path = get_filename(elt_id, 'grobid')
@@ -115,38 +120,44 @@ def parse_paragraphs(elts, paragraph_type, use_cache=True, use_llm=True):
             if os.path.isfile(xml_path):
                 xml_paths.append(xml_path)
     logger.debug(f"{paragraph_type}: {len(xml_paths)} / {len(elts)} files have an XML")
+
     new_parsing, llm_call = 0, 0
     already_parsed, already_llm = 0, 0
     llm_res = []
+
     for xml_path in xml_paths:
         uid = xml_path.split('/')[-1].split('.')[0]
         elt_id = id_to_string(uid)
         filename_paragraph = get_filename(elt_id, paragraph_type, "filter")
         filename_llm = get_filename(elt_id, paragraph_type, "llm")
         is_parsed, is_analyzed = False, False
+
         if use_cache and os.path.isfile(filename_paragraph):
             already_parsed += 1
             is_parsed = True
+
         if use_cache and os.path.isfile(filename_llm):
             already_llm += 1
             is_analyzed = True
+
         if (use_cache is False) or (is_parsed is False):
             new_parsing += 1
             paragraphs = parse_grobid(xml_path, elt_id)
-            if paragraph_type in FILTER_PARAGRAPHS:
-                FILTER_PARAGRAPHS[paragraph_type](paragraphs)
+            if paragraph_type in FILTER_FN:
+                filtered_paragraphs = FILTER_FN[paragraph_type](elt_id, paragraphs)
             else:
                 logger.error(f"{paragraph_type}: filter function not found")
+        else:
+            filtered_paragraphs = read_jsonl(filename_paragraph)
         if use_llm:
             if (use_cache is False) or (is_analyzed is False):
                 try:
-                    llm_res += LLM_ANSWER_PARAGRAPH[paragraph_type](elt_id)
+                    llm_res += LLM_COMPLETIONS_FN[paragraph_type](elt_id, filtered_paragraphs)
                     llm_call += 1
                 except Exception as error:
-                    logger.error(f"error for {elt_id}: {error}")
+                    logger.error(f"{paragraph_type}: error for {elt_id}: {error}")
             else:
-                p_llm = read_jsonl(filename_llm)
-                llm_res += p_llm
+                llm_res += read_jsonl(filename_llm)
     logger.debug(f"{paragraph_type}: already_parsed: {already_parsed}, already_llm: {already_llm}")
     logger.debug(f"{paragraph_type}: new parsed: {new_parsing}, LLM calls: {llm_call}")
     return llm_res
@@ -156,7 +167,7 @@ def test():
     input_file = "/src/validation/validation_from_florian_naudet_constant_vinatier.csv"
     df = pd.read_csv(input_file)
     elts = df.to_dict(orient="records")
-    paragraphs = parse_paragraphs(elts=elts, paragraph_type="ACKNOWLEDGEMENT", use_cache=True, use_llm=True)
+    paragraphs = parse_paragraphs(elts=elts, paragraph_type="acknowledgement", use_cache=True, use_llm=True)
     return paragraphs
 
 
@@ -182,7 +193,7 @@ def test():
 
 def validation():
     input_file = "/src/validation/validation_from_florian_naudet_constant_vinatier.csv"
-    args = {"paragraph_types": ["ACKNOWLEDGEMENT"], "download": True, "parse": True, "detect": True}
+    args = {"paragraph_types": ["acknowledgement"], "download": True, "parse": True, "detect": True}
     run_from_file(input_file=input_file, args=args, worker_idx=1)
     df = pd.read_csv(input_file)
     data = []
@@ -200,7 +211,7 @@ def run_list_publi(publi_ids, paragraph_type, use_cache):
     elts = enrich_with_metadata(c)
     download_and_grobid(elts, 1, use_cache)
     parse_paragraphs(elts, paragraph_type, use_cache=use_cache, use_llm=True)
-    # filename = get_filename(elts[0]['id'], 'ACKNOWLEDGEMENT', 'llm')
+    # filename = get_filename(elts[0]['id'], 'acknowledgement', 'llm')
 
 
 def run_from_file(input_file, args, worker_idx):
@@ -212,7 +223,7 @@ def run_from_file(input_file, args, worker_idx):
     concat = args.get("concat", False)
     chunksize = args.get("chunksize", 100)
     early_stop = args.get("early_stop", False)
-    paragraph_types = args.get("paragraph_types", ["ACKNOWLEDGEMENT"])
+    paragraph_types = args.get("paragraph_types", ["acknowledgement"])
     logger.info(f"Start run with args: {args}")
     if ("jsonl" in input_file) or ("chunk_bso" in input_file):
         df = pd.read_json(input_file, lines=True, chunksize=chunksize)

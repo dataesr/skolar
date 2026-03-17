@@ -9,10 +9,10 @@ import time
 from project.server.main.logger import get_logger
 from project.server.main.utils import download_file, clean_dir
 from project.server.main.s3 import client_s3, upload_s3
-from project.server.main.paragraphs.dataset import is_dataset
-from project.server.main.paragraphs.software import is_software
-from project.server.main.paragraphs.acknowledgement import is_acknowledgement
-from project.server.main.paragraphs.clinicaltrial import is_clinicaltrial
+from project.server.main.paragraphs.dataset.predict import is_dataset
+from project.server.main.paragraphs.software.predict import is_software
+from project.server.main.paragraphs.acknowledgement.predict import is_acknowledgement
+from project.server.main.paragraphs.clinicaltrial.predict import is_clinicaltrial
 from project.server.main.training.build_training import tag_mentions, infer_type
 logger = get_logger(__name__)
 
