@@ -38,16 +38,6 @@ def to_jsonl(input_list, output_file, mode = 'a'):
             json.dump(new, outfile)
             outfile.write('\n')
 
-
-def get_make_data_count_labels():
-    mdc_file = "make_data_count_labels_filtered.jsonl"
-    mdc_path = f"/data/{mdc_file}"
-    if not os.path.isfile(mdc_path):
-        url = f"https://skolar.s3.eu-west-par.io.cloud.ovh.net/datasets/{mdc_file}"
-        download_file(url, mdc_path)
-    return mdc_path
-
-
 def get_bso_data(year):
     bso_file = f'bso-publications-latest_split_{year}_enriched.jsonl.gz'
     url = f'https://storage.gra.cloud.ovh.net/v1/AUTH_32c5d10cb0fe4519b957064a111717e3/bso_dump/{bso_file}'
@@ -58,6 +48,15 @@ def split_bso_data(bso_file, year):
     logger.debug(f'splitting bso file in chunk of len 70 000 ; expect 5 files outputs')
     os.system(f'mkdir -p /data/bso_chunks && cd /data/bso_chunks && rm -rf chunk_bso_{year}_*')
     os.system(f'cd /data && zcat {bso_file} | split -l 70000 - chunk_bso_{year}_ && mv chunk_bso_{year}_* bso_chunks/.')
+
+
+def get_make_data_count_labels():
+    mdc_file = "make_data_count_labels_filtered.jsonl"
+    mdc_path = f"/data/{mdc_file}"
+    if not os.path.isfile(mdc_path):
+        download_from_s3(f"datasets/{mdc_file}", mdc_path)
+    return mdc_path
+
 
 def read_jsonl(filepath):
     with open(filepath, 'rb') as f:
@@ -213,7 +212,7 @@ def has_acknowledgement(elt_id):
 
 def get_filename(elt_id, file_type_input, step=''):
     file_type = file_type_input.lower()
-    #assert(file_type in ['pdf', 'grobid', 'acknowledgement'])
+    # assert(file_type in ['pdf', 'grobid', 'acknowledgement'])
     encoded_id = string_to_id(elt_id)
     path_type = file_type
     if file_type in ['acknowledgement', 'software', 'dataset']:
@@ -228,8 +227,8 @@ def get_filename(elt_id, file_type_input, step=''):
         filename = path_prefix + encoded_id + '.tei.xml'
     if file_type == 'publisher-xml':
         filename = path_prefix + encoded_id + '.publisher.xml'
-    if file_type in ['acknowledgement']:
-        filename = path_prefix + encoded_id + '.acknowledgement.jsonl'
+    if file_type in ["acknowledgement", "software", "dataset"]:
+        filename = path_prefix + encoded_id + f".{file_type}.jsonl"
     assert(isinstance(filename, str))
     os.system(f'mkdir -p {path_prefix}')
     return filename

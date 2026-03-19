@@ -63,6 +63,8 @@ LLM_COMPLETIONS_FN = {
 #    return done
 
 def enrich_with_metadata(df):
+    if "doi" not in df.columns:
+        df["doi"] = df["id"].apply(lambda x: x.replace("doi10", "10"))
     df['doi'] = df['doi'].apply(lambda x:x.lower().strip())
     dois = [d for d in df.doi.unique().tolist() if isinstance(d, str)]
     extra_metadata = get_oa(dois) # get info from unpaywall db

@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from project.server.main.paragraphs.dataset.predict import is_dataset
-from project.server.main.utils import get_filename, write_jsonl, download_file
+from project.server.main.utils import get_filename, write_jsonl, get_make_data_count_labels
 from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
@@ -9,31 +9,34 @@ logger = get_logger(__name__)
 PARAGRAPH_TYPE = "dataset"
 LANGS = ["en", "fr", "es", "pt", "it", "de"]
 
-datasets = None
+datasets = {}
 
 
 def load_datasets():
     global datasets
-    if datasets is None:
-        mdc_file = "make_data_count_citations_filtered.csv"
-        mdc_path = f"/data/dataset/{mdc_file}"
-        mdc_remote_path = f"https://skolar.s3.eu-west-par.io.cloud.ovh.net/datasets/{mdc_file}"
-        if not os.path.isfile(mdc_path):
-            download_file(mdc_remote_path, mdc_path)
-        mdc = pd.read_csv(mdc_path, sep=";")
+    if not datasets:
+        mdc_path = get_make_data_count_labels()
+        mdc = pd.read_json(mdc_path, lines=True)
         datasets = {"mdc": mdc}
 
 
 def make_data_count_is_dataset(paragraph, publication_id):
-    if datasets is None:
+    found_citations = []
+
+    if not datasets or "mdc" not in datasets:
         load_datasets()
     mdc_df = datasets["mdc"]
-    found_citations = []
-    dataset_names = mdc_df[mdc_df.publication == publication_id].dataset.unique().tolist()
-    for name in dataset_names:
-        if name in paragraph["text"]:
-            found_citations.append(name)
 
+    if "id" not in mdc_df.columns or "datasets" not in mdc_df.columns:
+        return found_citations
+
+    dataset_labels = mdc_df[mdc_df.id == publication_id].datasets.values[0]
+    if not isinstance(dataset_labels, list):
+        return found_citations
+
+    for label in dataset_labels:
+        if label in paragraph["text"]:
+            found_citations.append(label)
     return found_citations
 
 
@@ -62,6 +65,7 @@ def dataset_filter(publication_id, paragraphs) -> list:
         found_citations = make_data_count_is_dataset(paragraph, publication_id)
         if found_citations:
             paragraph["make_data_count_citations"] = found_citations
+            logger.debug(f"found citations {found_citations} in a paragraph from {publication_id}")
             filtered_paragraphs.append(paragraph)
             continue
         if is_dataset(paragraph):
