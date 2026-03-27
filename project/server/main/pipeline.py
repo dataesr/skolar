@@ -79,16 +79,16 @@ def enrich_with_metadata(df):
     return new_data
 
 
-def concat_files(elts, PARAGRAPH_TYPE="acknowledgement"):
+def concat_files(elts, paragraph_type="acknowledgement", from_dir="llm"):
     all_data = []
     for elt in elts:
-        filename = get_filename(elt['id'], PARAGRAPH_TYPE, 'llm')
+        filename = get_filename(elt["id"], paragraph_type, from_dir)
         try:
             current_data = pd.read_json(filename, lines=True).to_dict(orient='records')
             all_data += current_data
         except:
             pass
-    logger.debug(f'{len(all_data)} publis with ack data collected in the chunk')
+    logger.debug(f"{len(all_data)} publis with {paragraph_type} data collected in the chunk")
     return all_data
 
 
@@ -252,7 +252,8 @@ def run_from_file(input_file, args, worker_idx):
             if parse:
                 parse_paragraphs(elts, paragraph_type, use_cache, use_llm)
             if concat:
-                files_to_concat[paragraph_type] += concat_files(elts, paragraph_type)
+                concat_from_dir = "llm" if use_llm else "filter"
+                files_to_concat[paragraph_type] += concat_files(elts, paragraph_type, concat_from_dir)
         if early_stop:
             break
     if concat:
@@ -262,4 +263,5 @@ def run_from_file(input_file, args, worker_idx):
             os.system(f"rm -rf {output_file}")
             logger.debug(f"{paragraph_type}: writing {len(files_to_concat[paragraph_type])} elts into {output_file}")
             if files_to_concat[paragraph_type]:
+                os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)  # fix no found directory
                 to_jsonl(files_to_concat[paragraph_type], f"{output_file}")
