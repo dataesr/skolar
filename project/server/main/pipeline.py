@@ -207,12 +207,12 @@ def validation():
     pd.DataFrame(data).to_csv("/data/validation.csv", index=False)
 
 
-def run_list_publi(publi_ids, paragraph_type, use_cache):
+def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragraph, use_llm):
     c = pd.DataFrame({"id": publi_ids})
     c["doi"] = c["id"].apply(lambda x: x.replace("doi10", "10"))
     elts = enrich_with_metadata(c)
-    download_and_grobid(elts, 1, use_cache)
-    parse_paragraphs(elts, paragraph_type, use_cache=use_cache, use_llm=True)
+    download_and_grobid(elts=elts, worker_idx=1, use_cache=use_cache_grobid)
+    parse_paragraphs(elts, paragraph_type, use_cache=use_cache_paragraph, use_llm=use_llm)
     # filename = get_filename(elts[0]['id'], 'acknowledgement', 'llm')
 
 
@@ -220,7 +220,8 @@ def run_from_file(input_file, args, worker_idx):
     os.system(f"mkdir -p /data/pdf_{worker_idx}")
     download = args.get("download", False)
     parse = args.get("parse", False)
-    use_cache = args.get("use_cache", True)
+    use_cache_grobid = args.get("use_cache_grobid", True)
+    use_cache_paragraph = args.get("use_cache_paragraph", True)
     use_llm = args.get("use_llm", False)
     concat = args.get("concat", False)
     chunksize = args.get("chunksize", 100)
@@ -247,10 +248,10 @@ def run_from_file(input_file, args, worker_idx):
             elts = [e for e in elts if e["id"] not in ALREADY_COMPUTED_IDS]
             logger.debug(f"len elts = {len(elts)} after removing ALREADY_COMPUTED_IDS")
         if download:
-            download_and_grobid(elts, worker_idx, use_cache)
+            download_and_grobid(elts, worker_idx, use_cache_grobid)
         for paragraph_type in paragraph_types:
             if parse:
-                parse_paragraphs(elts, paragraph_type, use_cache, use_llm)
+                parse_paragraphs(elts, paragraph_type, use_cache_paragraph, use_llm)
             if concat:
                 concat_from_dir = "llm" if use_llm else "filter"
                 files_to_concat[paragraph_type] += concat_files(elts, paragraph_type, concat_from_dir)
