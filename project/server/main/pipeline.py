@@ -12,6 +12,7 @@ from project.server.main.paragraphs.dataset.filter import dataset_filter
 from project.server.main.utils import (
     id_to_string,
     cp_folder_local_s3,
+    sync_local_to_s3,
     gzip_all_files_in_dir,
     get_elt_id,
     get_filename,
@@ -107,7 +108,7 @@ def download_and_grobid(elts, worker_idx, use_cache=True):
     logger.debug(f'{len(xml_paths)} xmls extracted')
     return 
 
-def parse_paragraphs(elts, paragraph_type, use_cache=True, use_llm=True):
+def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=True):
     paragraphs = []
     xml_paths = []
     logger.debug(f"{paragraph_type}: start going through paths for {len(elts)} elts")
@@ -123,20 +124,25 @@ def parse_paragraphs(elts, paragraph_type, use_cache=True, use_llm=True):
                 xml_paths.append(xml_path)
     logger.debug(f"{paragraph_type}: {len(xml_paths)} / {len(elts)} files have an XML")
 
-    new_parsing, llm_call = 0, 0
-    already_parsed, already_llm = 0, 0
+    new_parsing, new_filtering, llm_call = 0, 0, 0
+    already_parsed, already_filtered, already_llm = 0, 0, 0
     llm_res = []
 
     for xml_path in xml_paths:
         uid = xml_path.split('/')[-1].split('.')[0]
         elt_id = id_to_string(uid)
-        filename_paragraph = get_filename(elt_id, paragraph_type, "filter")
+        filename_paragraph = get_filename(elt_id, f"all_paragraphs")
+        filename_filter = get_filename(elt_id, paragraph_type, "filter")
         filename_llm = get_filename(elt_id, paragraph_type, "llm")
-        is_parsed, is_analyzed = False, False
+        is_parsed, is_filtered, is_analyzed = False, False, False
 
         if use_cache and os.path.isfile(filename_paragraph):
             already_parsed += 1
             is_parsed = True
+        
+        if use_cache and os.path.isfile(filename_filter):
+            already_filtered += 1
+            is_filtered = True
 
         if use_cache and os.path.isfile(filename_llm):
             already_llm += 1
@@ -144,13 +150,19 @@ def parse_paragraphs(elts, paragraph_type, use_cache=True, use_llm=True):
 
         if (use_cache is False) or (is_parsed is False):
             new_parsing += 1
-            paragraphs = parse_grobid(xml_path, elt_id)
+            paragraphs = parse_grobid(xml_path, elt_id, worker_idx)
+        else:
+            paragraphs = read_json(filename_paragraph)
+
+        if (use_cache is False) or (is_filtered is False):
             if paragraph_type in FILTER_FN:
                 filtered_paragraphs = FILTER_FN[paragraph_type](elt_id, paragraphs)
+                new_filtering += 1
             else:
                 logger.error(f"{paragraph_type}: filter function not found")
         else:
-            filtered_paragraphs = read_jsonl(filename_paragraph)
+            filtered_paragraphs = read_jsonl(filename_filter)
+
         if use_llm:
             if (use_cache is False) or (is_analyzed is False):
                 try:
@@ -160,8 +172,9 @@ def parse_paragraphs(elts, paragraph_type, use_cache=True, use_llm=True):
                     logger.error(f"{paragraph_type}: error for {elt_id}: {error}")
             else:
                 llm_res += read_jsonl(filename_llm)
-    logger.debug(f"{paragraph_type}: already_parsed: {already_parsed}, already_llm: {already_llm}")
-    logger.debug(f"{paragraph_type}: new parsed: {new_parsing}, LLM calls: {llm_call}")
+    logger.debug(f"{paragraph_type}: already_parsed: {already_parsed}, already_filtered: {already_filtered}, already_llm: {already_llm}")
+    logger.debug(f"{paragraph_type}: new parsed: {new_parsing}, new_filtered: {new_filtering}, LLM calls: {llm_call}")
+    logger.debug(f'{len(xml_paths)} xmls extracted')
     return llm_res
 
 
@@ -169,7 +182,7 @@ def test():
     input_file = "/src/validation/validation_from_florian_naudet_constant_vinatier.csv"
     df = pd.read_csv(input_file)
     elts = df.to_dict(orient="records")
-    paragraphs = parse_paragraphs(elts=elts, paragraph_type="acknowledgement", use_cache=True, use_llm=True)
+    paragraphs = parse_paragraphs(elts=elts, worker_idx=1, paragraph_type="acknowledgement", use_cache=True, use_llm=True)
     return paragraphs
 
 
@@ -212,12 +225,13 @@ def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragr
     c["doi"] = c["id"].apply(lambda x: x.replace("doi10", "10"))
     elts = enrich_with_metadata(c)
     download_and_grobid(elts=elts, worker_idx=1, use_cache=use_cache_grobid)
-    parse_paragraphs(elts, paragraph_type, use_cache=use_cache_paragraph, use_llm=use_llm)
+    parse_paragraphs(elts, worker_idx=1, paragraph_type=paragraph_type, use_cache=use_cache_paragraph, use_llm=use_llm)
     # filename = get_filename(elts[0]['id'], 'acknowledgement', 'llm')
 
 
 def run_from_file(input_file, args, worker_idx):
     os.system(f"mkdir -p /data/pdf_{worker_idx}")
+    os.system(f"mkdir -p /data/all_paragraphs")
     download = args.get("download", False)
     parse = args.get("parse", False)
     use_cache_grobid = args.get("use_cache_grobid", True)
@@ -251,7 +265,7 @@ def run_from_file(input_file, args, worker_idx):
             download_and_grobid(elts, worker_idx, use_cache_grobid)
         for paragraph_type in paragraph_types:
             if parse:
-                parse_paragraphs(elts, paragraph_type, use_cache_paragraph, use_llm)
+                parse_paragraphs(elts, worker_idx, paragraph_type, use_cache_paragraph, use_llm)
             if concat:
                 concat_from_dir = "llm" if use_llm else "filter"
                 files_to_concat[paragraph_type] += concat_files(elts, paragraph_type, concat_from_dir)

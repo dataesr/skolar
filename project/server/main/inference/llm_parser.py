@@ -8,6 +8,24 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
+def parse_llm_output_with_CoT(text: str) -> dict:
+    # Trouver le début du JSON (dernier '{' au niveau racine)
+    json_start = text.rfind('\n{')
+    if json_start == -1:
+        json_start = text.rfind('{')
+
+    cot = text[:json_start].strip()
+    json_str = text[json_start:].strip()
+
+    try:
+        parsed_json = json.loads(json_str)
+    except:
+        parsed_json={}
+
+    return {
+        "CoT": cot,
+        **parsed_json
+    }
 
 def detect_md(output_llm, uid):
     parsed = {}

@@ -121,7 +121,7 @@ def sync_local_to_s3(folder_local, folder_distant=None):
     os.system(cmd)
 
 def sync_all(args):
-    for k in ['llm', 'filter', 'grobid', 'publisher-xml']:
+    for k in ['all_paragraphs', 'llm', 'filter', 'grobid', 'publisher-xml']:
         sync_local_to_s3(k)
 
 def inference_app_get_id(PARAGRAPH_TYPE: str) -> str:
@@ -227,6 +227,8 @@ def get_filename(elt_id, file_type_input, step=''):
         filename = path_prefix + encoded_id + '.tei.xml'
     if file_type == 'publisher-xml':
         filename = path_prefix + encoded_id + '.publisher.xml'
+    if file_type == 'all_paragraphs':
+        filename = path_prefix + encoded_id + '.paragraphs.jsonl'
     if file_type in ["acknowledgement", "software", "dataset"]:
         filename = path_prefix + encoded_id + f".{file_type}.jsonl"
     assert(isinstance(filename, str))

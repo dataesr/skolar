@@ -4,7 +4,7 @@ import re
 import hashlib
 import bs4
 from bs4 import BeautifulSoup
-from project.server.main.utils import chunks, get_lang
+from project.server.main.utils import chunks, get_lang, get_filename, write_jsonl
 from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
@@ -31,7 +31,7 @@ def run_grobid(pdf_file, output_file, use_cache):
     logger.debug(f'{output_file} written.')
     return output_file
 
-def parse_grobid(xml_path, publication_id):
+def parse_grobid(xml_path, publication_id, worker_idx):
     xml_handler = open(xml_path, 'r')
     soup = BeautifulSoup(xml_handler, 'html.parser')
     xml_handler.close()
@@ -79,6 +79,8 @@ def parse_grobid(xml_path, publication_id):
         p['lang'] = 'unk'
         if pred['proba'] > 0.7:
             p['lang'] = pred['lang']
+    filename_paragraphs = get_filename(publication_id, f'all_paragraphs')
+    write_jsonl(paragraphs, filename_paragraphs)
     return paragraphs
 
 #def decompose_text(text):
