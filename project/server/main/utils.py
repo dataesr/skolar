@@ -121,7 +121,7 @@ def sync_local_to_s3(folder_local, folder_distant=None):
     os.system(cmd)
 
 def sync_all(args):
-    for k in ['all_paragraphs', 'llm', 'filter', 'grobid', 'publisher-xml']:
+    for k in ['filter', 'all_paragraphs', 'llm', 'grobid', 'publisher-xml']:
         sync_local_to_s3(k)
 
 def inference_app_get_id(PARAGRAPH_TYPE: str) -> str:
@@ -215,7 +215,7 @@ def get_filename(elt_id, file_type_input, step=''):
     # assert(file_type in ['pdf', 'grobid', 'acknowledgement'])
     encoded_id = string_to_id(elt_id)
     path_type = file_type
-    if file_type in ['acknowledgement', 'software', 'dataset']:
+    if file_type in ['acknowledgement', 'software', 'dataset', 'clinicaltrial']:
         assert(step in ['llm', 'filter'])
         path_type = f'{step}/{file_type}'
     path_prefix = f'/data/{path_type}/' + get_path_from_id(encoded_id) + '/'
@@ -229,7 +229,7 @@ def get_filename(elt_id, file_type_input, step=''):
         filename = path_prefix + encoded_id + '.publisher.xml'
     if file_type == 'all_paragraphs':
         filename = path_prefix + encoded_id + '.paragraphs.jsonl'
-    if file_type in ["acknowledgement", "software", "dataset"]:
+    if file_type in ["acknowledgement", "software", "dataset", "clinicaltrial"]:
         filename = path_prefix + encoded_id + f".{file_type}.jsonl"
     assert(isinstance(filename, str))
     os.system(f'mkdir -p {path_prefix}')

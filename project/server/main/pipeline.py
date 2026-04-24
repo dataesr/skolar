@@ -9,6 +9,10 @@ from project.server.main.paragraphs.acknowledgement.llm import acknowledgement_l
 from project.server.main.paragraphs.acknowledgement.filter import acknowledgement_filter
 from project.server.main.paragraphs.dataset.llm import dataset_llm_completions
 from project.server.main.paragraphs.dataset.filter import dataset_filter
+#from project.server.main.paragraphs.software.llm import software_llm_completions
+from project.server.main.paragraphs.software.filter import software_filter
+#from project.server.main.paragraphs.clinicaltrial.llm import clinicaltrial_llm_completions
+from project.server.main.paragraphs.clinicaltrial.filter import clinicaltrial_filter
 from project.server.main.utils import (
     id_to_string,
     cp_folder_local_s3,
@@ -40,11 +44,15 @@ ALREADY_COMPUTED_IDS = pickle.load(open('/data/computed_ids.pkl', 'rb'))
 FILTER_FN = {
     "acknowledgement": acknowledgement_filter,
     "dataset": dataset_filter,
+    "software": software_filter,
+    "clinicaltrial": clinicaltrial_filter,
 }
 
 LLM_COMPLETIONS_FN = {
     "acknowledgement": acknowledgement_llm_completions,
     "dataset": dataset_llm_completions,
+ #   "software": software_llm_completions,
+ #   "clinicaltrial": clinicaltrial_llm_completions,
 }
 
 # def get_already_done(input_dir, reset=True):
