@@ -3,6 +3,7 @@ from retry import retry
 from project.server.main.utils import get_filename, write_jsonl
 from project.server.main.logger import get_logger
 from project.server.main.mistral import mistral_agent_completion
+from project.server.main.scaleway import scaleway_agent_completion,parse_llm_output 
 
 logger = get_logger(__name__)
 
@@ -51,14 +52,17 @@ def acknowledgement_llm_completions(publication_id, paragraphs) -> list:
         list: List of analyzed paragraphs with LLM completions.
     """
     analyzed_all = []
-    filename_llm = get_filename(publication_id, PARAGRAPH_TYPE, "llm")
+    filename_llm = get_filename(publication_id, PARAGRAPH_TYPE, "llm2")
 
-    for p in paragraphs:
-        res = mistral_agent_completion(p["text"], os.getenv("MISTRAL_AGENT_ACK_ID", ""))
+    for ixp, p in enumerate(paragraphs):
+        logger.debug(f'call llm for paragraph {ixp}/{len(paragraphs)}')
+        #res = mistral_agent_completion(p["text"], os.getenv("MISTRAL_AGENT_ACK_ID", ""))
+        res = scaleway_agent_completion(p["text"], os.getenv("SCALEWAY_AGENT_ACK_ID", ""))
         if res is None:
             continue
         try:
-            analyzed = markdown_to_json(res)
+            #analyzed = markdown_to_json(res)
+            analyzed = parse_llm_output(res)
             analyzed["publication_id"] = p["publication_id"]
             analyzed["text"] = p["text"]
             analyzed_all.append(analyzed)

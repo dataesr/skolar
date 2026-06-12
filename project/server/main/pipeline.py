@@ -141,7 +141,7 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
         elt_id = id_to_string(uid)
         filename_paragraph = get_filename(elt_id, f"all_paragraphs")
         filename_filter = get_filename(elt_id, paragraph_type, "filter")
-        filename_llm = get_filename(elt_id, paragraph_type, "llm")
+        filename_llm = get_filename(elt_id, paragraph_type, "llm2")
         is_parsed, is_filtered, is_analyzed = False, False, False
 
         if use_cache and os.path.isfile(filename_paragraph):
@@ -151,18 +151,23 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
         if use_cache and os.path.isfile(filename_filter):
             already_filtered += 1
             is_filtered = True
+            is_parsed = True
 
         if use_cache and os.path.isfile(filename_llm):
             already_llm += 1
             is_analyzed = True
+            is_parsed = True
+            is_filtered = True
 
-        if (use_cache is False) or (is_parsed is False):
-            new_parsing += 1
-            paragraphs = parse_grobid(xml_path, elt_id, worker_idx)
-        else:
-            paragraphs = read_json(filename_paragraph)
+        #if (use_cache is False) or (is_parsed is False):
+        #    new_parsing += 1
+        #    paragraphs = parse_grobid(xml_path, elt_id, worker_idx)
+        #else:
+        #    paragraphs = read_jsonl(filename_paragraph)
 
         if (use_cache is False) or (is_filtered is False):
+            paragraphs = parse_grobid(xml_path, elt_id, worker_idx)
+            new_parsing += 1
             if paragraph_type in FILTER_FN:
                 filtered_paragraphs = FILTER_FN[paragraph_type](elt_id, paragraphs)
                 new_filtering += 1

@@ -216,7 +216,7 @@ def get_filename(elt_id, file_type_input, step=''):
     encoded_id = string_to_id(elt_id)
     path_type = file_type
     if file_type in ['acknowledgement', 'software', 'dataset', 'clinicaltrial']:
-        assert(step in ['llm', 'filter'])
+        assert(step in ['llm', 'filter', 'llm2'])
         path_type = f'{step}/{file_type}'
     path_prefix = f'/data/{path_type}/' + get_path_from_id(encoded_id) + '/'
     os.system(f'mkdir -p {path_prefix}')
