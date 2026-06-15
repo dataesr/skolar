@@ -1,3 +1,4 @@
+from numpy.ma import argsort
 import os
 import requests
 import redis
@@ -5,6 +6,7 @@ import redis
 from flask import Blueprint, current_app, jsonify, render_template, request
 from rq import Connection, Queue
 from project.server.main.inference.test_model import model_inference
+from project.server.main.inference.compare_llm import compare_llm
 from project.server.main.pipeline import run_from_file
 from project.server.main.logger import get_logger
 from project.server.main.training.build_training import build_train_and_calibrate
@@ -129,3 +131,13 @@ def get_status(task_id):
     else:
         response_object = {"status": "error"}
     return jsonify(response_object)
+
+@main_blueprint.route("/compare_llm", methods=["POST"])
+def compare():
+    args = request.get_json(force=True)
+    logger.debug(f"compare_llm={args}")
+    with Connection(redis.from_url(current_app.config["REDIS_URL"])):
+        q = Queue(name="skolar", default_timeout=default_timeout)
+        task = q.enqueue(compare_llm, args)
+    response_object = {"status": "success", "data": {"task_id": task.get_id()}}
+    return jsonify(response_object), 202
