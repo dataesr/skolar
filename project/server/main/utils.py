@@ -67,6 +67,7 @@ def write_jsonl(data, filepath):
         for obj in data:
             f.write(orjson.dumps(obj))
             f.write(b'\n')
+    logger.debug(f"{filepath} written with {len(data)} objects")
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""

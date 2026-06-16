@@ -116,7 +116,7 @@ def download_and_grobid(elts, worker_idx, use_cache=True):
     logger.debug(f'{len(xml_paths)} xmls extracted')
     return 
 
-def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=True):
+def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=True, SCALEWAY_AGENT_ACK_ID=None):
     paragraphs = []
     xml_paths = []
     logger.debug(f"{paragraph_type}: start going through paths for {len(elts)} elts")
@@ -179,7 +179,7 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
         if use_llm:
             if (use_cache is False) or (is_analyzed is False):
                 try:
-                    llm_res += LLM_COMPLETIONS_FN[paragraph_type](elt_id, filtered_paragraphs)
+                    llm_res += LLM_COMPLETIONS_FN[paragraph_type](elt_id, filtered_paragraphs, SCALEWAY_AGENT_ACK_ID)
                     llm_call += 1
                 except Exception as error:
                     logger.error(f"{paragraph_type}: error for {elt_id}: {error}")
@@ -233,12 +233,12 @@ def validation():
     pd.DataFrame(data).to_csv("/data/validation.csv", index=False)
 
 
-def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragraph, use_llm):
+def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID):
     c = pd.DataFrame({"id": publi_ids})
     c["doi"] = c["id"].apply(lambda x: x.replace("doi10", "10"))
     elts = enrich_with_metadata(c)
     download_and_grobid(elts=elts, worker_idx=1, use_cache=use_cache_grobid)
-    parse_paragraphs(elts, worker_idx=1, paragraph_type=paragraph_type, use_cache=use_cache_paragraph, use_llm=use_llm)
+    parse_paragraphs(elts, worker_idx=1, paragraph_type=paragraph_type, use_cache=use_cache_paragraph, use_llm=use_llm, SCALEWAY_AGENT_ACK_ID=SCALEWAY_AGENT_ACK_ID)
     # filename = get_filename(elts[0]['id'], 'acknowledgement', 'llm')
 
 
@@ -247,6 +247,7 @@ def run_from_file(input_file, args, worker_idx):
     os.system(f"mkdir -p /data/all_paragraphs")
     download = args.get("download", False)
     parse = args.get("parse", False)
+    SCALEWAY_AGENT_ACK_ID = args.get('SCALEWAY_AGENT_ACK_ID')
     use_cache_grobid = args.get("use_cache_grobid", True)
     use_cache_paragraph = args.get("use_cache_paragraph", True)
     use_llm = args.get("use_llm", False)
@@ -278,7 +279,7 @@ def run_from_file(input_file, args, worker_idx):
             download_and_grobid(elts, worker_idx, use_cache_grobid)
         for paragraph_type in paragraph_types:
             if parse:
-                parse_paragraphs(elts, worker_idx, paragraph_type, use_cache_paragraph, use_llm)
+                parse_paragraphs(elts, worker_idx, paragraph_type, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID)
             if concat:
                 concat_from_dir = "llm" if use_llm else "filter"
                 files_to_concat[paragraph_type] += concat_files(elts, paragraph_type, concat_from_dir)

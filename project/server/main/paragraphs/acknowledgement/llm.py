@@ -40,7 +40,7 @@ def markdown_to_json(res_md):
 
 
 @retry(delay=30, tries=2, logger=logger)
-def acknowledgement_llm_completions(publication_id, paragraphs) -> list:
+def acknowledgement_llm_completions(publication_id, paragraphs, SCALEWAY_AGENT_ACK_ID) -> list:
     """
     Get LLM completions for paragraphs.
 
@@ -55,9 +55,9 @@ def acknowledgement_llm_completions(publication_id, paragraphs) -> list:
     filename_llm = get_filename(publication_id, PARAGRAPH_TYPE, "llm2")
 
     for ixp, p in enumerate(paragraphs):
-        logger.debug(f'call llm for paragraph {ixp}/{len(paragraphs)}')
+        logger.debug(f'call llm for publication {publication_id} paragraph {ixp+1}/{len(paragraphs)}')
         #res = mistral_agent_completion(p["text"], os.getenv("MISTRAL_AGENT_ACK_ID", ""))
-        res = scaleway_agent_completion(p["text"], os.getenv("SCALEWAY_AGENT_ACK_ID", ""))
+        res = scaleway_agent_completion(p["text"], SCALEWAY_AGENT_ACK_ID)
         if res is None:
             continue
         try:
@@ -65,11 +65,11 @@ def acknowledgement_llm_completions(publication_id, paragraphs) -> list:
             analyzed = parse_llm_output(res)
             analyzed["publication_id"] = p["publication_id"]
             analyzed["text"] = p["text"]
+            logger.debug(analyzed)
             analyzed_all.append(analyzed)
         except Exception as error:
             logger.debug(f"error parsing response from LLM : {res} ({error})")
             logger.debug(f"input was {p['text']}")
             continue
-
     write_jsonl(analyzed_all, filename_llm)
     return analyzed_all
