@@ -39,7 +39,7 @@ def get_already_computed():
     logger.debug(f'{len(all_ids)} ids already ok')
     pickle.dump(all_ids, open('/data/computed_ids.pkl', 'wb'))
 
-ALREADY_COMPUTED_IDS = pickle.load(open('/data/computed_ids.pkl', 'rb'))
+ALREADY_COMPUTED_IDS = []#pickle.load(open('/data/computed_ids.pkl', 'rb'))
 
 FILTER_FN = {
     "acknowledgement": acknowledgement_filter,
@@ -232,7 +232,7 @@ def validation():
         data.append(e)
     pd.DataFrame(data).to_csv("/data/validation.csv", index=False)
 
-
+#run_list_publi(['doi10.1016/j.triboint.2018.11.024'], 'acknowledgement', True, True, True, 'xx')
 def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID):
     c = pd.DataFrame({"id": publi_ids})
     c["doi"] = c["id"].apply(lambda x: x.replace("doi10", "10"))
