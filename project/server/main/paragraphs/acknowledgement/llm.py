@@ -40,7 +40,7 @@ def markdown_to_json(res_md):
 
 
 @retry(delay=30, tries=2, logger=logger)
-def acknowledgement_llm_completions(publication_id, paragraphs, SCALEWAY_AGENT_ACK_ID) -> list:
+def acknowledgement_llm_completions(publication_id, paragraphs, SCALEWAY_AGENT_ACK_ID, MODEL_NAME) -> list:
     """
     Get LLM completions for paragraphs.
 
@@ -50,14 +50,14 @@ def acknowledgement_llm_completions(publication_id, paragraphs, SCALEWAY_AGENT_A
 
     Returns:
         list: List of analyzed paragraphs with LLM completions.
-    """
+    """ 
     analyzed_all = []
-    filename_llm = get_filename(publication_id, PARAGRAPH_TYPE, "llm2")
+    filename_llm = get_filename(publication_id, PARAGRAPH_TYPE, f"llm_{MODEL_NAME}")
 
     for ixp, p in enumerate(paragraphs):
         logger.debug(f'call llm for publication {publication_id} paragraph {ixp+1}/{len(paragraphs)}')
         #res = mistral_agent_completion(p["text"], os.getenv("MISTRAL_AGENT_ACK_ID", ""))
-        res = scaleway_agent_completion(p["text"], SCALEWAY_AGENT_ACK_ID)
+        res = scaleway_agent_completion(p["text"], SCALEWAY_AGENT_ACK_ID, MODEL_NAME)
         if res is None:
             continue
         try:

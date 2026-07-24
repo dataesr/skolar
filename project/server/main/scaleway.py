@@ -14,15 +14,27 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-def scaleway_agent_completion(ack, deployment_url):
-    model_name = 'baguette-funders-600m-4k-with-template'
+def scaleway_agent_completion(ack, deployment_url, model_name):
+    #model_name = 'baguette-funders-600m-4k-with-template'
     URL = deployment_url + '/v1/chat/completions'
     t0 = time.time()
+
+    messages = [{"content": ack, "role": "user"}]
+
+    if model_name in ['funding-extraction-llama-31-8b-instruct']:
+        prompt = f"""Extract funding information from the following statement:
+    {ack}
+    """
+        messages = [
+    {"role": "system", "content": "You are an expert at extracting structured funding metadata from academic papers. Given a funding statement, extract all funders and their associated awards. Return a JSON array of funder objects. Each funder has:\n- \"funder_name\": string or null\n- \"awards\": array of objects with \"award_ids\" (array of strings), \"funding_scheme\" (array of strings), and \"award_title\" (array of strings)\nReturn ONLY the JSON array, no other text."},
+    {"role": "user", "content": prompt},
+        ]
+
     PAYLOAD = {
         "model": model_name,
-        "messages": [{"content": ack, "role": "user"}],
+        "messages": messages,
         "max_tokens": min(len(ack.split(' '))+1500, 4000),
-        "temperature": 0.2,
+        "temperature": 0.0,
         "top_p": 0.95,
         "presence_penalty": 0,
         "stream": False,
@@ -37,6 +49,12 @@ def scaleway_agent_completion(ack, deployment_url):
     return content
 
 def parse_llm_output(text: str) -> dict:
+    if text[0:1]=='[':
+        try:
+            # specific to CDL model for now
+            return {'projects': json.loads(text)}
+        except:
+            return {}
     # Trouver le début du JSON (dernier '{' au niveau racine)
     json_start = text.rfind('\n{')
     if json_start == -1:

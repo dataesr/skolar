@@ -116,7 +116,7 @@ def download_and_grobid(elts, worker_idx, use_cache=True):
     logger.debug(f'{len(xml_paths)} xmls extracted')
     return 
 
-def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=True, SCALEWAY_AGENT_ACK_ID=None):
+def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=True, SCALEWAY_AGENT_ACK_ID=None, MODEL_NAME=None):
     paragraphs = []
     xml_paths = []
     logger.debug(f"{paragraph_type}: start going through paths for {len(elts)} elts")
@@ -141,7 +141,7 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
         elt_id = id_to_string(uid)
         filename_paragraph = get_filename(elt_id, f"all_paragraphs")
         filename_filter = get_filename(elt_id, paragraph_type, "filter")
-        filename_llm = get_filename(elt_id, paragraph_type, "llm2")
+        filename_llm = get_filename(elt_id, paragraph_type, f"llm_{MODEL_NAME}")
         is_parsed, is_filtered, is_analyzed = False, False, False
 
         if use_cache and os.path.isfile(filename_paragraph):
@@ -179,7 +179,7 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
         if use_llm:
             if (use_cache is False) or (is_analyzed is False):
                 try:
-                    llm_res += LLM_COMPLETIONS_FN[paragraph_type](elt_id, filtered_paragraphs, SCALEWAY_AGENT_ACK_ID)
+                    llm_res += LLM_COMPLETIONS_FN[paragraph_type](elt_id, filtered_paragraphs, SCALEWAY_AGENT_ACK_ID, MODEL_NAME)
                     llm_call += 1
                 except Exception as error:
                     logger.error(f"{paragraph_type}: error for {elt_id}: {error}")
@@ -189,14 +189,6 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
     logger.debug(f"{paragraph_type}: new parsed: {new_parsing}, new_filtered: {new_filtering}, LLM calls: {llm_call}")
     logger.debug(f'{len(xml_paths)} xmls extracted')
     return llm_res
-
-
-def test():
-    input_file = "/src/validation/validation_from_florian_naudet_constant_vinatier.csv"
-    df = pd.read_csv(input_file)
-    elts = df.to_dict(orient="records")
-    paragraphs = parse_paragraphs(elts=elts, worker_idx=1, paragraph_type="acknowledgement", use_cache=True, use_llm=True)
-    return paragraphs
 
 
 # def get_from_live_unpaywall(doi):
@@ -233,12 +225,12 @@ def validation():
     pd.DataFrame(data).to_csv("/data/validation.csv", index=False)
 
 #run_list_publi(['doi10.1016/j.triboint.2018.11.024'], 'acknowledgement', True, True, True, 'xx')
-def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID):
+def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID, MODEL_NAME):
     c = pd.DataFrame({"id": publi_ids})
     c["doi"] = c["id"].apply(lambda x: x.replace("doi10", "10"))
     elts = enrich_with_metadata(c)
     download_and_grobid(elts=elts, worker_idx=1, use_cache=use_cache_grobid)
-    parse_paragraphs(elts, worker_idx=1, paragraph_type=paragraph_type, use_cache=use_cache_paragraph, use_llm=use_llm, SCALEWAY_AGENT_ACK_ID=SCALEWAY_AGENT_ACK_ID)
+    parse_paragraphs(elts, worker_idx=1, paragraph_type=paragraph_type, use_cache=use_cache_paragraph, use_llm=use_llm, SCALEWAY_AGENT_ACK_ID=SCALEWAY_AGENT_ACK_ID, MODEL_NAME=MODEL_NAME)
     # filename = get_filename(elts[0]['id'], 'acknowledgement', 'llm')
 
 
@@ -248,6 +240,7 @@ def run_from_file(input_file, args, worker_idx):
     download = args.get("download", False)
     parse = args.get("parse", False)
     SCALEWAY_AGENT_ACK_ID = args.get('SCALEWAY_AGENT_ACK_ID')
+    MODEL_NAME = args.get('MODEL_NAME')
     use_cache_grobid = args.get("use_cache_grobid", True)
     use_cache_paragraph = args.get("use_cache_paragraph", True)
     use_llm = args.get("use_llm", False)
@@ -279,7 +272,7 @@ def run_from_file(input_file, args, worker_idx):
             download_and_grobid(elts, worker_idx, use_cache_grobid)
         for paragraph_type in paragraph_types:
             if parse:
-                parse_paragraphs(elts, worker_idx, paragraph_type, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID)
+                parse_paragraphs(elts, worker_idx, paragraph_type, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID, MODEL_NAME)
             if concat:
                 concat_from_dir = "llm" if use_llm else "filter"
                 files_to_concat[paragraph_type] += concat_files(elts, paragraph_type, concat_from_dir)
