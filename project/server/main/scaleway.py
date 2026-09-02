@@ -7,33 +7,38 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
-SCW_SECRET_KEY = os.getenv('SCALEWAY_SECRET_KEY')
+SCW_SECRET_KEY = os.getenv("SCALEWAY_SECRET_KEY")
 
 HEADERS = {
     "Authorization": f"Bearer {SCW_SECRET_KEY}",
     "Content-Type": "application/json",
 }
 
+
+@retry(delay=30, tries=2, logger=logger)
 def scaleway_agent_completion(ack, deployment_url, model_name):
-    #model_name = 'baguette-funders-600m-4k-with-template'
-    URL = deployment_url + '/v1/chat/completions'
+    # model_name = 'baguette-funders-600m-4k-with-template'
+    URL = deployment_url + "/v1/chat/completions"
     t0 = time.time()
 
     messages = [{"content": ack, "role": "user"}]
 
-    if model_name in ['funding-extraction-llama-31-8b-instruct']:
+    if model_name in ["funding-extraction-llama-31-8b-instruct"]:
         prompt = f"""Extract funding information from the following statement:
     {ack}
     """
         messages = [
-    {"role": "system", "content": "You are an expert at extracting structured funding metadata from academic papers. Given a funding statement, extract all funders and their associated awards. Return a JSON array of funder objects. Each funder has:\n- \"funder_name\": string or null\n- \"awards\": array of objects with \"award_ids\" (array of strings), \"funding_scheme\" (array of strings), and \"award_title\" (array of strings)\nReturn ONLY the JSON array, no other text."},
-    {"role": "user", "content": prompt},
+            {
+                "role": "system",
+                "content": 'You are an expert at extracting structured funding metadata from academic papers. Given a funding statement, extract all funders and their associated awards. Return a JSON array of funder objects. Each funder has:\n- "funder_name": string or null\n- "awards": array of objects with "award_ids" (array of strings), "funding_scheme" (array of strings), and "award_title" (array of strings)\nReturn ONLY the JSON array, no other text.',
+            },
+            {"role": "user", "content": prompt},
         ]
 
     PAYLOAD = {
         "model": model_name,
         "messages": messages,
-        "max_tokens": min(len(ack.split(' '))+1500, 4000),
+        "max_tokens": min(len(ack.split(" ")) + 1500, 4000),
         "temperature": 0.0,
         "top_p": 0.95,
         "presence_penalty": 0,
@@ -42,33 +47,41 @@ def scaleway_agent_completion(ack, deployment_url, model_name):
         "response_format": {"type": "text"},
     }
 
-    response = requests.post(URL, headers=HEADERS, data=json.dumps(PAYLOAD))
-    content = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+    response = requests.post(URL, headers=HEADERS, data=json.dumps(PAYLOAD), timeout=60)
+    response.raise_for_status()
+    payload = response.json()
+
+    choices = payload.get("choices", [])
+    if not choices:
+        raise ValueError("Scaleway response had no choices")
+
+    content = choices[0].get("message", {}).get("content", "")
+    if not isinstance(content, str):
+        raise ValueError("Scaleway response content is not a string")
+    if not content.strip():
+        raise ValueError("Scaleway response content is empty")
+
     t1 = time.time()
-    logger.debug(f"This model call last {(t1-t0)}")
-    return content
+    logger.debug(f"This model call last {(t1 - t0)}")
+    return content.strip()
+
 
 def parse_llm_output(text: str) -> dict:
-    if text[0:1]=='[':
+    raw_text = text.strip()
+
+    # Find and parse json
+    for start, ch in enumerate(raw_text):
+        if ch not in "{[":
+            continue
         try:
-            # specific to CDL model for now
-            return {'projects': json.loads(text)}
-        except:
-            return {}
-    # Trouver le début du JSON (dernier '{' au niveau racine)
-    json_start = text.rfind('\n{')
-    if json_start == -1:
-        json_start = text.rfind('{')
+            parsed_cot = raw_text[:start]
+            parsed_json = json.JSONDecoder().raw_decode(raw_text[start:])[0]
+            if isinstance(parsed_json, list):
+                return {"projects": parsed_json}  # specific to CDL model for now
+            if isinstance(parsed_json, dict):
+                return {"CoT": parsed_cot, **parsed_json}
+        except json.JSONDecodeError:
+            continue
 
-    cot = text[:json_start].strip()
-    json_str = text[json_start:].strip()
-
-    try:
-        parsed_json = json.loads(json_str)
-    except:
-        parsed_json={}
-
-    return {
-        "CoT": cot,
-        **parsed_json
-    }
+    # Raise error if no valid JSON is found
+    raise Exception(f"Failed to parse JSON")
