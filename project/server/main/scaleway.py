@@ -83,4 +83,4 @@ def parse_llm_output(text: str) -> dict:
             continue
 
     # Raise error if no valid JSON is found
-    raise Exception(f"Failed to parse JSON")
+    raise Exception(f"Failed to parse JSON: \n{raw_text}")

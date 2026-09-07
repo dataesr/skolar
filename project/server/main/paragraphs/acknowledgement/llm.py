@@ -3,7 +3,7 @@ from retry import retry
 from project.server.main.utils import get_filename, write_jsonl
 from project.server.main.logger import get_logger
 from project.server.main.mistral import mistral_agent_completion
-from project.server.main.scaleway import scaleway_agent_completion,parse_llm_output 
+from project.server.main.scaleway import scaleway_agent_completion, parse_llm_output
 
 logger = get_logger(__name__)
 
@@ -32,7 +32,7 @@ def acknowledgement_llm_completions(publication_id, paragraphs, SCALEWAY_AGENT_A
             analyzed = parse_llm_output(res)
             analyzed["publication_id"] = publication_id
             analyzed["text"] = p["text"]
-            logger.debug(analyzed)
+            # logger.debug(analyzed)
             analyzed_all.append(analyzed)
         except Exception as error:
             failed.append({"text": p["text"], "error": str(error)})
