@@ -16,17 +16,16 @@ HEADERS = {
 
 
 @retry(delay=30, tries=2, logger=logger)
-def scaleway_agent_completion(ack, deployment_url, model_name):
+def scaleway_agent_completion(text, deployment_url, model_name):
     # model_name = 'baguette-funders-600m-4k-with-template'
     URL = deployment_url + "/v1/chat/completions"
     t0 = time.time()
 
-    messages = [{"content": ack, "role": "user"}]
+    messages = [{"content": text, "role": "user"}]
 
+    # custom prompts #TODO: move this in paragraphs..
     if model_name in ["funding-extraction-llama-31-8b-instruct"]:
-        prompt = f"""Extract funding information from the following statement:
-    {ack}
-    """
+        prompt = f"Extract funding information from the following statement:\n  {text}"
         messages = [
             {
                 "role": "system",
@@ -38,7 +37,7 @@ def scaleway_agent_completion(ack, deployment_url, model_name):
     PAYLOAD = {
         "model": model_name,
         "messages": messages,
-        "max_tokens": min(len(ack.split(" ")) + 1500, 4000),
+        "max_tokens": min(len(text.split(" ")) + 1500, 4000),
         "temperature": 0.0,
         "top_p": 0.95,
         "presence_penalty": 0,
