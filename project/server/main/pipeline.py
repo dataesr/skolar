@@ -1,3 +1,4 @@
+from project.server.main.scaleway import scaleway_is_deployed
 import pandas as pd
 import json
 import pymongo
@@ -5,14 +6,11 @@ import os
 import pickle
 from project.server.main.harvester.test import process_publication
 from project.server.main.grobid import parse_grobid
-from project.server.main.paragraphs.acknowledgement.llm import acknowledgement_llm_completions
 from project.server.main.paragraphs.acknowledgement.filter import acknowledgement_filter
-from project.server.main.paragraphs.dataset.llm import dataset_llm_completions
 from project.server.main.paragraphs.dataset.filter import dataset_filter
-#from project.server.main.paragraphs.software.llm import software_llm_completions
 from project.server.main.paragraphs.software.filter import software_filter
-#from project.server.main.paragraphs.clinicaltrial.llm import clinicaltrial_llm_completions
 from project.server.main.paragraphs.clinicaltrial.filter import clinicaltrial_filter
+from project.server.main.inference.llm_completions import llm_completions
 from project.server.main.utils import (
     id_to_string,
     cp_folder_local_s3,
@@ -30,29 +28,24 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 def get_already_computed():
     all_ids = set()
-    for f in os.listdir('/data/acknowledgement'):
+    for f in os.listdir("/data/acknowledgement"):
         logger.debug(f)
-        df = pd.read_json(f'/data/acknowledgement/{f}', lines=True)
+        df = pd.read_json(f"/data/acknowledgement/{f}", lines=True)
         all_ids.update(df.publication_id.to_list())
-    logger.debug(f'{len(all_ids)} ids already ok')
-    pickle.dump(all_ids, open('/data/computed_ids.pkl', 'wb'))
+    logger.debug(f"{len(all_ids)} ids already ok")
+    pickle.dump(all_ids, open("/data/computed_ids.pkl", "wb"))
 
-ALREADY_COMPUTED_IDS = []#pickle.load(open('/data/computed_ids.pkl', 'rb'))
+
+ALREADY_COMPUTED_IDS = []  # pickle.load(open('/data/computed_ids.pkl', 'rb'))
 
 FILTER_FN = {
     "acknowledgement": acknowledgement_filter,
     "dataset": dataset_filter,
     "software": software_filter,
     "clinicaltrial": clinicaltrial_filter,
-}
-
-LLM_COMPLETIONS_FN = {
-    "acknowledgement": acknowledgement_llm_completions,
-    "dataset": dataset_llm_completions,
- #   "software": software_llm_completions,
- #   "clinicaltrial": clinicaltrial_llm_completions,
 }
 
 # def get_already_done(input_dir, reset=True):
@@ -71,19 +64,20 @@ LLM_COMPLETIONS_FN = {
 #    pickle.dump(done, open(cache_filename, 'wb'))
 #    return done
 
+
 def enrich_with_metadata(df):
     if "doi" not in df.columns:
         df["doi"] = df["id"].apply(lambda x: x.replace("doi10", "10"))
-    df['doi'] = df['doi'].apply(lambda x:x.lower().strip())
+    df["doi"] = df["doi"].apply(lambda x: x.lower().strip())
     dois = [d for d in df.doi.unique().tolist() if isinstance(d, str)]
-    extra_metadata = get_oa(dois) # get info from unpaywall db
+    extra_metadata = get_oa(dois)  # get info from unpaywall db
     extra_dict = {}
     for e in extra_metadata:
-        extra_dict[e['doi']] = e
+        extra_dict[e["doi"]] = e
     new_data = []
-    for e in df.to_dict(orient='records'):
-        if e['doi'] in extra_dict:
-            e.update(extra_dict[e['doi']])
+    for e in df.to_dict(orient="records"):
+        if e["doi"] in extra_dict:
+            e.update(extra_dict[e["doi"]])
         new_data.append(e)
     return new_data
 
@@ -93,7 +87,7 @@ def concat_files(elts, paragraph_type="acknowledgement", from_dir="llm"):
     for elt in elts:
         filename = get_filename(elt["id"], paragraph_type, from_dir)
         try:
-            current_data = pd.read_json(filename, lines=True).to_dict(orient='records')
+            current_data = pd.read_json(filename, lines=True).to_dict(orient="records")
             all_data += current_data
         except:
             pass
@@ -104,30 +98,36 @@ def concat_files(elts, paragraph_type="acknowledgement", from_dir="llm"):
 def download_and_grobid(elts, worker_idx, use_cache=True):
     xml_paths = []
     for elt in elts:
-        if elt.get('hal_docType') in ['VIDEO', 'video']:
+        if elt.get("hal_docType") in ["VIDEO", "video"]:
             logger.debug(f"skip video {elt['id']}")
             continue
-        xml_path = process_publication(elt = elt, worker_idx = worker_idx, use_cache = use_cache) # download + run_grobid
+        xml_path = process_publication(elt=elt, worker_idx=worker_idx, use_cache=use_cache)  # download + run_grobid
         if xml_path:
             xml_paths.append(xml_path)
-    gzip_all_files_in_dir(f'/data/pdf_{worker_idx}')
-    cp_folder_local_s3(f'/data/pdf_{worker_idx}', 'pdf')
-    os.system(f'rm -rf /data/pdf_{worker_idx}')
-    logger.debug(f'{len(xml_paths)} xmls extracted')
-    return 
+    gzip_all_files_in_dir(f"/data/pdf_{worker_idx}")
+    cp_folder_local_s3(f"/data/pdf_{worker_idx}", "pdf")
+    os.system(f"rm -rf /data/pdf_{worker_idx}")
+    logger.debug(f"{len(xml_paths)} xmls extracted")
+    return
 
-def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=True, SCALEWAY_AGENT_ACK_ID=None, MODEL_NAME=None):
+
+def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=True, SCW_ENDPOINT=None, SCW_MODEL_NAME=None):
     paragraphs = []
     xml_paths = []
     logger.debug(f"{paragraph_type}: start going through paths for {len(elts)} elts")
 
+    # Check if scaleway endpoint is deployed
+    if use_llm and SCW_ENDPOINT:
+        if not scaleway_is_deployed(SCW_ENDPOINT, SCW_MODEL_NAME):
+            raise Exception(f"Scaleway endpoint {SCW_ENDPOINT} is not deployed!")
+
     for elt in elts:
         elt_id = get_elt_id(elt)
-        xml_path = get_filename(elt_id, 'grobid')
+        xml_path = get_filename(elt_id, "grobid")
         if os.path.isfile(xml_path):
             xml_paths.append(xml_path)
         else:
-            xml_path = get_filename(elt_id, 'publisher-xml')
+            xml_path = get_filename(elt_id, "publisher-xml")
             if os.path.isfile(xml_path):
                 xml_paths.append(xml_path)
     logger.debug(f"{paragraph_type}: {len(xml_paths)} / {len(elts)} files have an XML")
@@ -137,17 +137,17 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
     llm_res = []
 
     for xml_path in xml_paths:
-        uid = xml_path.split('/')[-1].split('.')[0]
+        uid = xml_path.split("/")[-1].split(".")[0]
         elt_id = id_to_string(uid)
         filename_paragraph = get_filename(elt_id, f"all_paragraphs")
         filename_filter = get_filename(elt_id, paragraph_type, "filter")
-        filename_llm = get_filename(elt_id, paragraph_type, f"llm_{MODEL_NAME}")
+        filename_llm = get_filename(elt_id, paragraph_type, f"llm_{SCW_MODEL_NAME}")
         is_parsed, is_filtered, is_analyzed = False, False, False
 
         if use_cache and os.path.isfile(filename_paragraph):
             already_parsed += 1
             is_parsed = True
-        
+
         if use_cache and os.path.isfile(filename_filter):
             already_filtered += 1
             is_filtered = True
@@ -159,13 +159,13 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
             is_parsed = True
             is_filtered = True
 
-        #if (use_cache is False) or (is_parsed is False):
+        # if is_parsed is False:
         #    new_parsing += 1
         #    paragraphs = parse_grobid(xml_path, elt_id, worker_idx)
-        #else:
+        # else:
         #    paragraphs = read_jsonl(filename_paragraph)
 
-        if (use_cache is False) or (is_filtered is False):
+        if is_filtered is False:
             paragraphs = parse_grobid(xml_path, elt_id, worker_idx)
             new_parsing += 1
             if paragraph_type in FILTER_FN:
@@ -177,17 +177,19 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
             filtered_paragraphs = read_jsonl(filename_filter)
 
         if use_llm:
-            if (use_cache is False) or (is_analyzed is False):
+            if is_analyzed is False:
                 try:
-                    llm_res += LLM_COMPLETIONS_FN[paragraph_type](elt_id, filtered_paragraphs, SCALEWAY_AGENT_ACK_ID, MODEL_NAME)
+                    llm_res += llm_completions(elt_id, filtered_paragraphs, SCW_ENDPOINT, SCW_MODEL_NAME)
                     llm_call += 1
                 except Exception as error:
                     logger.error(f"{paragraph_type}: error for {elt_id}: {error}")
             else:
                 llm_res += read_jsonl(filename_llm)
-    logger.debug(f"{paragraph_type}: already_parsed: {already_parsed}, already_filtered: {already_filtered}, already_llm: {already_llm}")
+    logger.debug(
+        f"{paragraph_type}: already_parsed: {already_parsed}, already_filtered: {already_filtered}, already_llm: {already_llm}"
+    )
     logger.debug(f"{paragraph_type}: new parsed: {new_parsing}, new_filtered: {new_filtering}, LLM calls: {llm_call}")
-    logger.debug(f'{len(xml_paths)} xmls extracted')
+    logger.debug(f"{len(xml_paths)} xmls extracted")
     return llm_res
 
 
@@ -224,13 +226,22 @@ def validation():
         data.append(e)
     pd.DataFrame(data).to_csv("/data/validation.csv", index=False)
 
-#run_list_publi(['doi10.1016/j.triboint.2018.11.024'], 'acknowledgement', True, True, True, 'xx')
-def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID, MODEL_NAME):
+
+# run_list_publi(['doi10.1016/j.triboint.2018.11.024'], 'acknowledgement', True, True, True, 'xx')
+def run_list_publi(publi_ids, paragraph_type, use_cache_grobid, use_cache_paragraph, use_llm, SCW_ENDPOINT, SCW_MODEL_NAME):
     c = pd.DataFrame({"id": publi_ids})
     c["doi"] = c["id"].apply(lambda x: x.replace("doi10", "10"))
     elts = enrich_with_metadata(c)
     download_and_grobid(elts=elts, worker_idx=1, use_cache=use_cache_grobid)
-    parse_paragraphs(elts, worker_idx=1, paragraph_type=paragraph_type, use_cache=use_cache_paragraph, use_llm=use_llm, SCALEWAY_AGENT_ACK_ID=SCALEWAY_AGENT_ACK_ID, MODEL_NAME=MODEL_NAME)
+    parse_paragraphs(
+        elts,
+        worker_idx=1,
+        paragraph_type=paragraph_type,
+        use_cache=use_cache_paragraph,
+        use_llm=use_llm,
+        SCW_ENDPOINT=SCW_ENDPOINT,
+        SCW_MODEL_NAME=SCW_MODEL_NAME,
+    )
     # filename = get_filename(elts[0]['id'], 'acknowledgement', 'llm')
 
 
@@ -239,8 +250,8 @@ def run_from_file(input_file, args, worker_idx):
     os.system(f"mkdir -p /data/all_paragraphs")
     download = args.get("download", False)
     parse = args.get("parse", False)
-    SCALEWAY_AGENT_ACK_ID = args.get('SCALEWAY_AGENT_ACK_ID')
-    MODEL_NAME = args.get('MODEL_NAME')
+    SCW_ENDPOINT = args.get("SCW_ENDPOINT")
+    SCW_MODEL_NAME = args.get("SCW_MODEL_NAME")
     use_cache_grobid = args.get("use_cache_grobid", True)
     use_cache_paragraph = args.get("use_cache_paragraph", True)
     use_llm = args.get("use_llm", False)
@@ -272,7 +283,15 @@ def run_from_file(input_file, args, worker_idx):
             download_and_grobid(elts, worker_idx, use_cache_grobid)
         for paragraph_type in paragraph_types:
             if parse:
-                parse_paragraphs(elts, worker_idx, paragraph_type, use_cache_paragraph, use_llm, SCALEWAY_AGENT_ACK_ID, MODEL_NAME)
+                parse_paragraphs(
+                    elts,
+                    worker_idx,
+                    paragraph_type,
+                    use_cache_paragraph,
+                    use_llm,
+                    SCW_ENDPOINT,
+                    SCW_MODEL_NAME,
+                )
             if concat:
                 concat_from_dir = "llm" if use_llm else "filter"
                 files_to_concat[paragraph_type] += concat_files(elts, paragraph_type, concat_from_dir)

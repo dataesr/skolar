@@ -140,7 +140,7 @@ def compare(base_dir: Path, paragraph_type: str) -> tuple:
 # ---------------------------------------------------------------------------
 
 
-def compare_llm(args: dict):
+def llm_compare(args: dict):
     paragraph_type = args["paragraph_type"]
     base_dir = args.get("base_dir", "/data")
     output_dir = args.get("output_dir", "/data")
@@ -166,15 +166,15 @@ def compare_llm(args: dict):
     print(json.dumps(meta, indent=2))
 
 
-def compare_llm_cli():
+def llm_compare_cli():
     parser = argparse.ArgumentParser(description="Compare two LLM inference runs.")
     parser.add_argument("--paragraph", "-p", type=str, required=True, help="Paragraph type.")
     parser.add_argument("--base-dir", type=str, default="/data", help="Data directory.")
     parser.add_argument("--output-dir", type=str, default="/data", help="Output directory.")
     args = parser.parse_args()
 
-    compare_llm(vars(args))
+    llm_compare(vars(args))
 
 
 if __name__ == "__main__":
-    compare_llm_cli()
+    llm_compare_cli()

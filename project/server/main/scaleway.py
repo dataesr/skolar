@@ -7,12 +7,30 @@ from project.server.main.logger import get_logger
 
 logger = get_logger(__name__)
 
+SCW_URL = "https://api.scaleway.com/inference/v1/regions/fr-par"
 SCW_SECRET_KEY = os.getenv("SCALEWAY_SECRET_KEY")
 
 HEADERS = {
     "Authorization": f"Bearer {SCW_SECRET_KEY}",
     "Content-Type": "application/json",
 }
+
+
+def scaleway_is_deployed(deployment_url, model_name):
+    try:
+        res = requests.get(f"{SCW_URL}/deployments", headers=HEADERS)
+        deployments = res.json()
+        for deploy in deployments:
+            endpoints = deploy.get("endpoints", [{}])
+            for endpoint in endpoints:
+                if endpoint.get("url", "") == deployment_url:
+                    deploy_model_name = deploy.get("model_name", "")
+                    if deploy_model_name != model_name:
+                        logger.warning(f"Scaleway deployed with incorrect model ({deploy_model_name} != {model_name})")
+                    return True
+    except Exception as error:
+        logger.error(f"Error while reaching Scaleway deployments: {str(error)}")
+    return False
 
 
 @retry(delay=30, tries=2, logger=logger)
@@ -78,7 +96,10 @@ def parse_llm_output(text: str) -> dict:
             if isinstance(parsed_json, list):
                 return {"projects": parsed_json}  # specific to CDL model for now
             if isinstance(parsed_json, dict):
-                return {"CoT": parsed_cot, **parsed_json}
+                output = parsed_json
+                if parsed_cot:
+                    output["CoT"] = parsed_cot
+                return output
         except json.JSONDecodeError:
             continue
 

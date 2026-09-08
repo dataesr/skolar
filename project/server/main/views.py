@@ -5,7 +5,7 @@ import redis
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 from rq import Connection, Queue
-from project.server.main.inference.compare_llm import compare_llm
+from project.server.main.inference.llm_compare import llm_compare
 from project.server.main.pipeline import run_from_file
 from project.server.main.logger import get_logger
 from project.server.main.training.build_training import build_train_and_calibrate
@@ -78,8 +78,6 @@ def run_process_bso():
     year = args.get("year")
     get_bso_data(year)
     worker_idx = 1
-    # if args.get('analyze'):
-    #    inference_app_run('acknowledgement')
     for f in os.listdir("/data/bso_chunks"):
         if f.startswith(f"chunk_bso_{year}"):
             # assert(f in ['chunk_bso_aa', 'chunk_bso_ab', 'chunk_bso_ac', 'chunk_bso_ad', 'chunk_bso_ae', 'chunk_bso_af', 'chunk_bso_ag', 'chunk_bso_ah', 'chunk_bso_ai', 'chunk_bso_aj'])
@@ -121,12 +119,12 @@ def get_status(task_id):
     return jsonify(response_object)
 
 
-@main_blueprint.route("/compare_llm", methods=["POST"])
+@main_blueprint.route("/llm_compare", methods=["POST"])
 def compare():
     args = request.get_json(force=True)
-    logger.debug(f"compare_llm={args}")
+    logger.debug(f"llm_compare={args}")
     with Connection(redis.from_url(current_app.config["REDIS_URL"])):
         q = Queue(name="skolar", default_timeout=default_timeout)
-        task = q.enqueue(compare_llm, args)
+        task = q.enqueue(llm_compare, args)
     response_object = {"status": "success", "data": {"task_id": task.get_id()}}
     return jsonify(response_object), 202
