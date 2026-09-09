@@ -34,8 +34,8 @@ def scaleway_is_deployed(deployment_url, model_name):
 
 
 @retry(delay=30, tries=2, logger=logger)
-def scaleway_agent_completion(text, deployment_url, model_name):
-    # model_name = 'baguette-funders-600m-4k-with-template'
+def scaleway_get_completion(text: str, deployment_url: str, model_name: str) -> str:
+    """Get text completion from deployed model"""
     URL = deployment_url + "/v1/chat/completions"
     t0 = time.time()
 
@@ -64,15 +64,12 @@ def scaleway_agent_completion(text, deployment_url, model_name):
         "response_format": {"type": "text"},
     }
 
-    response = requests.post(URL, headers=HEADERS, data=json.dumps(PAYLOAD), timeout=60)
+    response = requests.post(URL, headers=HEADERS, json=PAYLOAD, timeout=60)
     response.raise_for_status()
-    payload = response.json()
 
-    choices = payload.get("choices", [])
-    if not choices:
-        raise ValueError("Scaleway response had no choices")
+    data = response.json()
+    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-    content = choices[0].get("message", {}).get("content", "")
     if not isinstance(content, str):
         raise ValueError("Scaleway response content is not a string")
     if not content.strip():
@@ -83,7 +80,7 @@ def scaleway_agent_completion(text, deployment_url, model_name):
     return content.strip()
 
 
-def parse_llm_output(text: str) -> dict:
+def scaleway_get_data(text: str) -> dict:
     raw_text = text.strip()
 
     # Find and parse json
