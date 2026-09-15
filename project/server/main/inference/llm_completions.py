@@ -4,6 +4,7 @@ from project.server.main.utils import get_filename, write_jsonl
 from project.server.main.logger import get_logger
 from project.server.main.mistral import mistral_agent_completion
 from project.server.main.scaleway import scaleway_get_completion, scaleway_get_data
+from project.server.main.mlhub import mlh_get_tool
 
 logger = get_logger(__name__)
 
@@ -38,8 +39,13 @@ def llm_completions(
         analyzed = {"publication_id": publication_id, "text": p["text"]}
         raw_output = None
         try:
-            raw_output = scaleway_get_completion(p["text"], SCW_ENDPOINT, SCW_MODEL_NAME)
-            data = scaleway_get_data(raw_output)
+            if SCW_MODEL_NAME.lower() == "flair":
+                # Special case for flair (hosted by ml-hub)
+                data = mlh_get_tool(tool="flair", text=p["text"])
+            else:
+                # Scaleway hosted models
+                raw_output = scaleway_get_completion(p["text"], SCW_ENDPOINT, SCW_MODEL_NAME)
+                data = scaleway_get_data(raw_output)
             analyzed.update(data)
             analyzed_all.append(analyzed)
             # logger.debug(analyzed)
