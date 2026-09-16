@@ -20,12 +20,12 @@ EXTRACTORS = {
 }
 
 
-def parse_files(base_dir: str, model_name: str, use_case: str) -> tuple[list[dict], list[dict]]:
+def parse_files(base_dir: str, model_name: str, use_case: str) -> tuple:
     """Extract metrics from JSONL files for a specific model and use case"""
     publications = []  # publications results
     paragraphs = []  # paragraphs results
 
-    model_dir = os.path.join(base_dir, model_name)
+    model_dir = os.path.join(base_dir, f"llm_{model_name}")
     if not os.path.isdir(model_dir):
         logger.error(f"Model folder not found: {model_dir}")
         return publications, paragraphs
@@ -38,8 +38,10 @@ def parse_files(base_dir: str, model_name: str, use_case: str) -> tuple[list[dic
     extractor = EXTRACTORS[use_case]
 
     # Walk all subdirectories
+    logger.info(f"Start walking directory {paragraph_dir}...")
     for root, dirs, files in os.walk(paragraph_dir):
         for file_name in files:
+            logger.debug(f"-> {file_name=} ({root=})")
             if not file_name.endswith(".jsonl"):
                 continue
 
@@ -121,7 +123,7 @@ def parse_files(base_dir: str, model_name: str, use_case: str) -> tuple[list[dic
     return publications, paragraphs
 
 
-def build_database(publications: list[dict], paragraphs: list[dict], output_dir: str) -> duckdb.DuckDBPyConnection:
+def build_database(publications: list, paragraphs: list, output_dir: str) -> duckdb.DuckDBPyConnection:
     """Create an in-memory DuckDB database from parsed results."""
     os.makedirs(output_dir, exist_ok=True)
 
@@ -466,7 +468,7 @@ def get_publication_matrix(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     """).df()
 
 
-def save_results(results: dict[str, pd.DataFrame], output_dir: str) -> None:
+def save_results(results: dict, output_dir: str) -> None:
     """Save evaluation tables as Parquet files."""
 
     os.makedirs(output_dir, exist_ok=True)
@@ -477,16 +479,18 @@ def save_results(results: dict[str, pd.DataFrame], output_dir: str) -> None:
         logger.info(f"Saved {name}: {len(df):,} rows -> {path}")
 
 
-def llm_evaluate(
-    use_case: str,
-    models: list[str] = [],
-    base_dir: str = BASE_DIR,
-    output_dir: str = OUTPUT_DIR,
-):
+def llm_evaluate(args: dict):
+    use_case = args.get("use_case", "")
+    models = args.get("models", [])
+    base_dir = args.get("base_dir", BASE_DIR)
+    output_dir = args.get("output_dir", OUTPUT_DIR)
+
+    if not (use_case or models):
+        raise ValueError(f"Missing arguments! {use_case=}, {models=}")
 
     logger.info(f"Starting LLM evaluation: models={models}, use_case={use_case}")
-    publications: list[dict] = []
-    paragraphs: list[dict] = []
+    publications = []
+    paragraphs = []
 
     # Process each model
     for model in models:

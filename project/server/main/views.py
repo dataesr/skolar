@@ -120,7 +120,7 @@ def get_status(task_id):
 
 
 @main_blueprint.route("/llm_evaluate", methods=["POST"])
-def compare():
+def evaluate():
     args = request.get_json(force=True)
     logger.debug(f"llm_evaluate={args}")
     with Connection(redis.from_url(current_app.config["REDIS_URL"])):
