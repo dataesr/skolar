@@ -112,6 +112,7 @@ def parse_files(base_dir: str, model_name: str, use_case: str) -> tuple:
 
                 current_paragraphs.append(para_data)
 
+            publi_data["has_result"] = True
             publi_data["paragraphs_processed"] = len(current_paragraphs)
             publi_data["paragraphs_ok"] = len([p for p in current_paragraphs if p["status"] == "success"])
             publi_data["paragraphs_with_results"] = len([p for p in current_paragraphs if p["has_result"]])
