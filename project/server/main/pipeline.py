@@ -22,6 +22,7 @@ from project.server.main.utils import (
     has_acknowledgement,
     read_jsonl,
     to_jsonl,
+    is_file,
 )
 from project.server.main.mongo import get_oa
 from project.server.main.logger import get_logger
@@ -144,16 +145,16 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
         filename_llm = get_filename(elt_id, paragraph_type, f"llm_{SCW_MODEL_NAME}")
         is_parsed, is_filtered, is_analyzed = False, False, False
 
-        if use_cache and os.path.isfile(filename_paragraph):
+        if use_cache and is_file(filename_paragraph, include_empty=False):
             already_parsed += 1
             is_parsed = True
 
-        if use_cache and os.path.isfile(filename_filter):
+        if use_cache and is_file(filename_filter, include_empty=False):
             already_filtered += 1
             is_filtered = True
             is_parsed = True
 
-        if use_cache and os.path.isfile(filename_llm):
+        if use_cache and is_file(filename_llm, include_empty=False):
             already_llm += 1
             is_analyzed = True
             is_parsed = True

@@ -69,6 +69,14 @@ def write_jsonl(data, filepath):
             f.write(b'\n')
     logger.debug(f"{filepath} written with {len(data)} objects")
 
+
+def is_file(path: str, include_empty: bool = True):
+    exists = os.path.isfile(path)
+    if not include_empty:
+        return os.path.getsize(path) > 2  # 2 bytes = empty braces
+    return exists
+
+
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
