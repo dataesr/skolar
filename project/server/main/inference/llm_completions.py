@@ -3,10 +3,36 @@ from retry import retry
 from project.server.main.utils import get_filename, write_jsonl
 from project.server.main.logger import get_logger
 from project.server.main.mistral import mistral_agent_completion
-from project.server.main.scaleway import scaleway_get_completion, scaleway_get_data
+from project.server.main.scaleway import scaleway_get_completion, scaleway_get_data, scaleway_get_chat_completion
 from project.server.main.mlhub import mlh_get_tool
 
 logger = get_logger(__name__)
+
+
+def get_completions(text: str, SCW_ENDPOINT: str, SCW_MODEL_NAME: str):
+    """Build prompt and call correct completion fonction"""
+
+    if SCW_MODEL_NAME in ["funding-extraction-llama-31-8b-instruct"]:
+        prompt = f"Extract funding information from the following statement:\n  {text}"
+        messages = [
+            {
+                "role": "system",
+                "content": 'You are an expert at extracting structured funding metadata from academic papers. Given a funding statement, extract all funders and their associated awards. Return a JSON array of funder objects. Each funder has:\n- "funder_name": string or null\n- "awards": array of objects with "award_ids" (array of strings), "funding_scheme" (array of strings), and "award_title" (array of strings)\nReturn ONLY the JSON array, no other text.',
+            },
+            {"role": "user", "content": prompt},
+        ]
+        return scaleway_get_chat_completion(messages, SCW_ENDPOINT, SCW_MODEL_NAME)
+
+    if SCW_MODEL_NAME in ["baguette-software-dataset"]:
+        prompt = f"<|im_start|>user\n<text>{text}</text><|im_end|>\n<|im_start|>assistant\n"  # only extract
+        return scaleway_get_completion(prompt, SCW_ENDPOINT, SCW_MODEL_NAME)
+
+    if SCW_MODEL_NAME in ["baguette-funders-600m-4k"]:
+        prompt = f"<|im_start|>user\n<text>{text}</text><|im_end|>\n<|im_start|>assistant\n<think>"  # only extract
+        return scaleway_get_completion(prompt, SCW_ENDPOINT, SCW_MODEL_NAME)
+
+    messages = [{"content": text, "role": "user"}]
+    return scaleway_get_chat_completion(messages, SCW_ENDPOINT, SCW_MODEL_NAME)
 
 
 @retry(delay=30, tries=2, logger=logger)
@@ -44,7 +70,7 @@ def llm_completions(
                 data = mlh_get_tool(tool="flair", text=p["text"])
             else:
                 # Scaleway hosted models
-                raw_output = scaleway_get_completion(p["text"], SCW_ENDPOINT, SCW_MODEL_NAME)
+                raw_output = get_completions(p["text"], SCW_ENDPOINT, SCW_MODEL_NAME)
                 data = scaleway_get_data(raw_output)
             analyzed.update(data)
             analyzed_all.append(analyzed)
