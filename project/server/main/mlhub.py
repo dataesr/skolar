@@ -7,10 +7,9 @@ from project.server.main.logger import get_logger
 logger = get_logger(__name__)
 
 MLH_API_URL = os.getenv("ML_HUB_API_URL", "")
-MLH_API_KEY = os.getenv("ML_HUB_API_KEY", "")
 
 HEADERS = {
-    "Authorization": f"Basic {MLH_API_KEY}",
+    "Authorization": os.getenv("ML_HUB_API_KEY", ""),
     "Content-Type": "application/json",
 }
 
@@ -18,7 +17,7 @@ HEADERS = {
 @retry(delay=30, tries=2, logger=logger)
 def mlh_get_tool(tool: str, **kwargs):
     """Use ml-hub 'get' tool"""
-    URL = MLH_API_URL + "/" + tool + "?"
+    URL = MLH_API_URL + "/tools/" + tool + "?"
     for key, value in kwargs.items():
         URL += f"{key}={quote_plus(value)}&"
 
