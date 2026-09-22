@@ -35,7 +35,7 @@ def get_completions(text: str, SCW_ENDPOINT: str, SCW_MODEL_NAME: str):
             # f"<|im_start|>user\n<mentions>{mentions}</mentions><|im_end|>\n<|im_start|>assistant\n" # pour les mentions
         if SCW_MODEL_NAME in ["baguette-funders-600m-4k"]:
             prompt = f"<|im_start|>user\n<text>{text}</text><|im_end|>\n<|im_start|>assistant\n<think>"  # only extract
-        return scaleway_get_completion(prompt = prompt, deployment_url = SCW_ENDPOINT, model_name = SCW_MODEL_NAME, args)
+        return scaleway_get_completion(prompt = prompt, deployment_url = SCW_ENDPOINT, model_name = SCW_MODEL_NAME, **args)
 
     logger.debug(f"unknown model {SCW_MODEL_NAME}")
     #messages = [{"content": text, "role": "user"}]
