@@ -21,7 +21,7 @@ def mlh_get_tool(tool: str, **kwargs):
     for key, value in kwargs.items():
         URL += f"{key}={quote_plus(value)}&"
 
-    logger.debug(f"Ml-hub URL = {URL}")
+    # logger.debug(f"Ml-hub URL = {URL}")
 
     response = requests.get(URL, headers=HEADERS, timeout=60)
     response.raise_for_status()
