@@ -72,7 +72,7 @@ def write_jsonl(data, filepath):
 
 def is_file(path: str, include_empty: bool = True):
     exists = os.path.isfile(path)
-    if not include_empty:
+    if exists and (not include_empty): #on vérifie qu'il n'est pas vide
         return os.path.getsize(path) > 2  # 2 bytes = empty braces
     return exists
 

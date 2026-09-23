@@ -180,7 +180,7 @@ def parse_paragraphs(elts, worker_idx, paragraph_type, use_cache=True, use_llm=T
         if use_llm:
             if is_analyzed is False:
                 try:
-                    llm_res += llm_completions(elt_id, filtered_paragraphs, SCW_ENDPOINT, SCW_MODEL_NAME)
+                    llm_res += llm_completions(elt_id, filtered_paragraphs, paragraph_type, SCW_ENDPOINT, SCW_MODEL_NAME)
                     llm_call += 1
                 except Exception as error:
                     logger.error(f"{paragraph_type}: error for {elt_id}: {error}")
