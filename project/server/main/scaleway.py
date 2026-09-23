@@ -12,6 +12,7 @@ SCW_SECRET_KEY = os.getenv("SCALEWAY_SECRET_KEY")
 
 HEADERS = {
     "Authorization": f"Bearer {SCW_SECRET_KEY}",
+    "X-Auth-Token": SCW_SECRET_KEY,
     "Content-Type": "application/json",
 }
 
@@ -19,7 +20,7 @@ HEADERS = {
 def scaleway_is_deployed(deployment_url, model_name):
     try:
         res = requests.get(f"{SCW_URL}/deployments", headers=HEADERS)
-        deployments = res.json()
+        deployments = res.json()['deployments']
         for deploy in deployments:
             endpoints = deploy.get("endpoints", [{}])
             for endpoint in endpoints:
