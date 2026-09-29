@@ -128,26 +128,108 @@ def scaleway_get_chat_completion(messages: list, deployment_url: str, model_name
     logger.debug(f"This model call last {(t1 - t0)}")
     return content.strip()
 
+import json
+import re
+
+_DECODER = json.JSONDecoder()
+_WS = " \n\r\t"
+
+
+def _skip(s: str, pos: int, chars: str) -> int:
+    while pos < len(s) and s[pos] in chars:
+        pos += 1
+    return pos
+
+
+def _salvage_array(s: str, pos: int) -> list:
+    """Éléments complets d'un tableau JSON tronqué commençant à s[pos] == '['."""
+    items = []
+    pos += 1
+    while True:
+        pos = _skip(s, pos, _WS + ",")
+        if pos >= len(s) or s[pos] == "]":
+            break
+        try:
+            item, pos = _DECODER.raw_decode(s, pos)
+        except json.JSONDecodeError:
+            break
+        items.append(item)
+    return items
+
+
+def _salvage_object(s: str, pos: int) -> dict:
+    """Paires clé/valeur complètes d'un objet JSON tronqué commençant à s[pos] == '{'.
+    Si la valeur coupée est une liste, on garde ses éléments complets."""
+    out = {}
+    pos += 1
+    while True:
+        pos = _skip(s, pos, _WS + ",")
+        if pos >= len(s) or s[pos] != '"':
+            break
+        try:
+            key, pos = _DECODER.raw_decode(s, pos)
+        except json.JSONDecodeError:
+            break
+        pos = _skip(s, pos, _WS + ":")
+        if pos >= len(s):
+            break
+        try:
+            value, pos = _DECODER.raw_decode(s, pos)
+        except json.JSONDecodeError:
+            if s[pos] == "[":
+                items = _salvage_array(s, pos)
+                if items:
+                    out[key] = items
+            break
+        out[key] = value
+    return out
+
+
+def _is_plausible(parsed) -> bool:
+    if isinstance(parsed, dict):
+        return bool(parsed)
+    if isinstance(parsed, list):
+        return all(isinstance(x, dict) for x in parsed)
+    return False
+
+
+def _wrap(parsed, cot: str, truncated: bool = False) -> dict:
+    output = {"projects": parsed} if isinstance(parsed, list) else parsed  # list: spécifique au modèle CDL
+    if cot:
+        output["CoT"] = cot
+    if truncated:
+        output["truncated"] = True
+    return output
+
 
 def scaleway_get_data(text: str) -> dict:
     raw_text = text.strip()
 
-    # Find and parse json
-    for start, ch in enumerate(raw_text):
-        if ch not in "{[":
-            continue
-        try:
-            parsed_cot = raw_text[:start]
-            parsed_json = json.JSONDecoder().raw_decode(raw_text[start:])[0]
-            if isinstance(parsed_json, list):
-                return {"projects": parsed_json}  # specific to CDL model for now
-            if isinstance(parsed_json, dict):
-                output = parsed_json
-                if parsed_cot:
-                    output["CoT"] = parsed_cot
-                return output
-        except json.JSONDecodeError:
-            continue
+    for match in re.finditer(r"[{\[]", raw_text):
+        start = match.start()
+        cot = raw_text[:start].strip()
 
-    # Raise error if no valid JSON is found
-    raise Exception(f"Failed to parse JSON: \n{raw_text}")
+        # 1. JSON complet
+        try:
+            parsed, _ = _DECODER.raw_decode(raw_text, start)
+            if _is_plausible(parsed):
+                return _wrap(parsed, cot)
+            continue
+        except json.JSONDecodeError:
+            pass
+
+        # 2. Ça ressemble au début du vrai JSON ({" ou [{) mais c'est tronqué :
+        #    on récupère ce qui est complet, sans jamais descendre dans les objets internes
+        nxt = _skip(raw_text, start + 1, _WS)
+        if raw_text[start] == "{" and raw_text[nxt:nxt + 1] == '"':
+            parsed = _salvage_object(raw_text, start)
+        elif raw_text[start] == "[" and raw_text[nxt:nxt + 1] == "{":
+            parsed = [x for x in _salvage_array(raw_text, start) if isinstance(x, dict)]
+        else:
+            continue  # accolade ou crochet dans le raisonnement : on passe
+
+        if parsed:
+            return _wrap(parsed, cot, truncated=True)
+        raise ValueError(f"JSON truncated before any complete element:\n{raw_text}")
+
+    raise ValueError(f"Failed to parse JSON:\n{raw_text}")
