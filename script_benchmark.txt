@@ -1,0 +1,77 @@
+cat > sample_compare.py <<'EOF'
+import os
+import json
+import random
+import base64
+
+A = "/data/llm_baguette-funders-600m-4k/acknowledgement"
+B = "/data/llm_funding-extraction-llama-31-8b-instruct/acknowledgement"
+N = 5000
+MAX_TRIES = 100_000
+DROP_KEYS = set() # {"CoT"}   # champs retirés pour alléger ; mettre set() pour tout garder
+OUT = "echantillon.jsonl"
+random.seed(42)
+
+def id_to_string(id):
+    padding = len(id) % 4
+    if padding:
+        id = id + '=' * (4 - padding)
+    return base64.b64decode(id.encode('utf-8')).decode('utf-8')
+
+def random_file(root):
+    """Descend au hasard dans l'arbre jusqu'à un fichier non vide."""
+    d = root
+    while True:
+        with os.scandir(d) as it:
+            entries = list(it)
+        files = [e for e in entries if e.is_file() and e.stat().st_size > 0]
+        if files:
+            return random.choice(files).path
+        dirs = [e for e in entries if e.is_dir()]
+        if not dirs:
+            return None
+        d = random.choice(dirs).path
+
+def read_jsonl(path):
+    out = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                for k in DROP_KEYS:
+                    obj.pop(k, None)
+            except json.JSONDecodeError:
+                obj = {"_raw": line}
+            out.append(obj)
+    return out
+
+samples, seen, tries = [], set(), 0
+while len(samples) < N and tries < MAX_TRIES:
+    tries += 1
+    pa = random_file(A)
+    if pa is None or pa in seen:
+        continue
+    seen.add(pa)
+    rel = os.path.relpath(pa, A)
+    pb = os.path.join(B, rel)
+    try:
+        if os.path.getsize(pb) == 0:
+            continue
+    except FileNotFoundError:
+        continue
+    samples.append({
+        "path": rel,
+        "publication_id": id_to_string(os.path.basename(rel).split(".")[0]),
+        "llm_baguette-funders-600m-4k": read_jsonl(pa),
+        "llm_funding-extraction-llama-31-8b-instruct": read_jsonl(pb),
+    })
+
+with open(OUT, "w", encoding="utf-8") as f:
+    for s in samples:
+        f.write(json.dumps(s, ensure_ascii=False) + "\n")
+
+print(f"{len(samples)} échantillons écrits dans {OUT} ({tries} tirages)")
+EOF

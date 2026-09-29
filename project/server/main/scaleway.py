@@ -55,10 +55,25 @@ def scaleway_get_completion(prompt: str, deployment_url: str, model_name: str, *
 
     response = requests.post(URL, headers=HEADERS, json=PAYLOAD, timeout=kwargs.get('timeout', 120))
     response.raise_for_status()
-
     data = response.json()
-    content = data.get("choices", [{}])[0].get("text").strip()
+    choices = data.get("choices") or [{}]
+    content = choices[0].get("text")
+    finish_reason = choices[0].get("finish_reason")
 
+    if finish_reason == 'length':
+        prompt_tokens = data.get("usage", {}).get("prompt_tokens", 1000)
+        MAX_TOKEN = 4096 - prompt_tokens - 16
+        PAYLOAD["max_tokens"] = MAX_TOKEN
+        logger.debug(f"first attempt was too short on max_tokens {kwargs.get('max_tokens', 2048)}; retrying with some more")
+        response = requests.post(URL, headers=HEADERS, json=PAYLOAD, timeout=kwargs.get('timeout', 120))
+        response.raise_for_status()
+        data = response.json()
+        choices = data.get("choices") or [{}]
+        content = choices[0].get("text")
+        finish_reason = choices[0].get("finish_reason")
+
+    if finish_reason == 'length':
+        logger.debug("Scaleway response content truncated")
     if not isinstance(content, str):
         raise ValueError("Scaleway response content is not a string")
     if not content.strip():
